@@ -1,13 +1,3 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/1wWDUh7hGxbByiUyR-oeK2xuvyGBtqTA1
-
 ## Project Structure
 
 ```
@@ -29,11 +19,78 @@ cloud-run/
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:**  Node.js (v18 or higher)
 
+### Backend Setup
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1. Navigate to backend directory:
+   ```bash
+   cd backend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Configure environment variables:
+   - Copy `.env.example` to `.env`
+   - Set your `GEMINI_API_KEY` (get from [Google AI Studio](https://aistudio.google.com/app/apikey))
+   - Set your Google Cloud `PROJECT_ID`
+   - Set your `STORAGE_BUCKET` name
+
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+   The backend will run on `http://localhost:8080`
+
+### Frontend Setup
+
+1. Navigate to frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Configure environment variables:
+   - The `.env` file is already configured to point to `http://localhost:8080`
+   - Update `VITE_API_URL` if your backend runs on a different port
+
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+   The frontend will run on `http://localhost:5173`
+
+### API Endpoints
+
+The backend provides the following endpoints:
+
+- `GET /health` - Health check
+- `GET /api/documents` - List all documents
+- `GET /api/documents/:id` - Get document details
+- `POST /api/upload` - Upload a new document
+- `POST /api/search` - AI-powered document search
+- `POST /api/chat` - Chat with AI assistant
+- `DELETE /api/documents/:id` - Delete a document
+
+### Technology Stack
+
+**Backend:**
+- Express.js - Web framework
+- Google Cloud Storage - Document storage
+- Firestore - Document metadata
+- Gemini AI - Document analysis and chat
+- Multer - File upload handling
+
+**Frontend:**
+- React + TypeScript
+- Vite - Build tool
+- TailwindCSS - Styling

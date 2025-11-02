@@ -8,6 +8,25 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/1wWDUh7hGxbByiUyR-oeK2xuvyGBtqTA1
 
+## Project Structure
+
+```
+cloud-run/
+├── backend/          # Backend API server
+│   └── src/
+│       ├── routes/   # API routes
+│       ├── services/
+│       │   └── gemini/  # Gemini AI service integration
+│       └── config/   # Backend configuration
+├── frontend/         # React frontend application
+│   └── src/
+│       ├── components/  # React components
+│       ├── services/    # Frontend services
+│       ├── utils/       # Utility functions
+│       └── App.tsx      # Main app component
+└── README.md
+```
+
 ## Run Locally
 
 **Prerequisites:**  Node.js

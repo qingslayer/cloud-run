@@ -1,0 +1,5 @@
+{
+  "name": "Health Vault",
+  "description": "A warm and friendly application to help you securely store, understand, and manage your health records. Health Vault uses AI to make your medical documents easy to navigate and comprehend, empowering you to take control of your health journey.",
+  "requestFramePermissions": []
+}

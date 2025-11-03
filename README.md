@@ -17,9 +17,49 @@ cloud-run/
 └── README.md
 ```
 
-## Run Locally
+## Getting Started
 
-**Prerequisites:**  Node.js (v18 or higher)
+### Prerequisites
+- Node.js v18 or higher
+- Google Cloud account project ([create one here](https://console.cloud.google.com/projectcreate))
+- gcloud CLI
+  - Mac: `brew install google-cloud-sdk`
+  - Windows / Linux: [installation guide](https://cloud.google.com/sdk/docs/install)
+  - Verify: `gcloud --version`
+
+### Google Cloud Setup
+
+**Important Notes:**
+- This project uses the `europe-west1` region (hackathon requirement)
+- Replace all instances of `YOUR-PROJECT-ID` with your actual Google Cloud project ID
+
+1. Authenticate and configure
+```bash
+   gcloud auth login # gcloud CLI
+   gcloud auth application-default login # app credentials
+
+   gcloud config set project YOUR-PROJECT-ID
+   gcloud config get-value project # verify
+```
+
+2. Enable required APIs
+```bash
+gcloud services enable run.googleapis.com
+gcloud services enable storage.googleapis.com
+gcloud services enable firestore.googleapis.com
+gcloud services enable aiplatform.googleapis.com
+```
+
+3. Create required resources
+```bash
+# Storage bucket
+gsutil mb -l europe-west1 gs://healthvault-YOUR-PROJECT-ID
+
+# Firestore
+gcloud firestore databases create --location=europe-west1
+```
+
+## Run Locally
 
 ### Backend Setup
 
@@ -42,11 +82,24 @@ cloud-run/
    - `PROJECT_ID` - your Google Cloud project ID
    - `STORAGE_BUCKET` - your Cloud Storage bucket name
 
-4. Start the development server:
+4. Verify connections:
+```bash
+   node test-connection.js
+```
+   Should show ✅ for all three services.
+
+   **If you see ❌ errors:**
+```bash
+   gcloud auth application-default login           # re-authenticate
+   gcloud config get-value project                 # verify project
+   gcloud services list --enabled | grep -E "run|storage|firestore" # check APIs
+```
+   Also double-check your `.env` values.
+
+5. Start the development server:
 ```bash
    npm run dev
 ```
-
    The backend will run on `http://localhost:8080`
 
 ### Frontend Setup
@@ -72,13 +125,11 @@ cloud-run/
    ```bash
    npm run dev
    ```
-
    The frontend will run on `http://localhost:5173`
 
 ### API Endpoints
 
 The backend provides the following endpoints:
-
 - `GET /health` - Health check
 - `GET /api/documents` - List all documents
 - `GET /api/documents/:id` - Get document details

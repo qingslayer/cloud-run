@@ -24,42 +24,48 @@ cloud-run/
 ### Backend Setup
 
 1. Navigate to backend directory:
-   ```bash
+```bash
    cd backend
-   ```
+```
 
 2. Install dependencies:
-   ```bash
+```bash
    npm install
-   ```
+```
 
 3. Configure environment variables:
-   - Copy `.env.example` to `.env`
-   - Set your `GEMINI_API_KEY` (get from [Google AI Studio](https://aistudio.google.com/app/apikey))
-   - Set your Google Cloud `PROJECT_ID`
-   - Set your `STORAGE_BUCKET` name
+```bash
+   cp .env.example .env
+```
+   Then edit `.env` and set:
+   - `GEMINI_API_KEY` - get from [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - `PROJECT_ID` - your Google Cloud project ID
+   - `STORAGE_BUCKET` - your Cloud Storage bucket name
 
 4. Start the development server:
-   ```bash
+```bash
    npm run dev
-   ```
+```
 
    The backend will run on `http://localhost:8080`
 
 ### Frontend Setup
 
 1. Navigate to frontend directory:
-   ```bash
+```bash
    cd frontend
-   ```
+```
 
 2. Install dependencies:
-   ```bash
+```bash
    npm install
-   ```
+```
 
 3. Configure environment variables:
-   - The `.env` file is already configured to point to `http://localhost:8080`
+```bash
+   cp .env.example .env
+```
+   - Default points to `http://localhost:8080`
    - Update `VITE_API_URL` if your backend runs on a different port
 
 4. Start the development server:

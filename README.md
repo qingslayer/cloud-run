@@ -22,6 +22,9 @@ cloud-run/
 ### Prerequisites
 - Node.js v18 or higher
 - Google Cloud account project ([create one here](https://console.cloud.google.com/projectcreate))
+   - Required permissions: ([update here](https://console.cloud.google.com/iam-admin/iam))
+      - Owner / Editor for the Cloud Project
+      - Firebase Authentication Admin
 - gcloud CLI
   - Mac: `brew install google-cloud-sdk`
   - Windows / Linux: [installation guide](https://cloud.google.com/sdk/docs/install)
@@ -35,11 +38,11 @@ cloud-run/
 
 1. Authenticate and configure
 ```bash
-   gcloud auth login # gcloud CLI
-   gcloud auth application-default login # app credentials
+   gcloud auth login                           # gcloud CLI
+   gcloud auth application-default login       # app credentials
 
    gcloud config set project YOUR-PROJECT-ID
-   gcloud config get-value project # verify
+   gcloud config get-value project             # verify
 ```
 
 2. Enable required APIs
@@ -48,6 +51,7 @@ gcloud services enable run.googleapis.com
 gcloud services enable storage.googleapis.com
 gcloud services enable firestore.googleapis.com
 gcloud services enable aiplatform.googleapis.com
+gcloud services enable firebase.googleapis.com
 ```
 
 3. Create required resources
@@ -86,13 +90,14 @@ gcloud firestore databases create --location=europe-west1
 ```bash
    node test-connection.js
 ```
-   Should show ✅ for all three services.
+   Should show ✅ for all four services.
 
    **If you see ❌ errors:**
 ```bash
-   gcloud auth application-default login           # re-authenticate
-   gcloud config get-value project                 # verify project
-   gcloud services list --enabled | grep -E "run|storage|firestore" # check APIs
+   gcloud auth application-default login                 # re-authenticate
+   gcloud auth application-default print-access-token    # confirm auth access
+   gcloud config get-value project                       # verify project
+   gcloud services list --enabled | grep -E "run|storage|firestore|firebase" # check APIs
 ```
    Also double-check your `.env` values.
 

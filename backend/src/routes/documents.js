@@ -1,8 +1,12 @@
 import express from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
+import { Storage } from '@google-cloud/storage';
+import { Firestore } from '@google-cloud/firestore';
 
 const router = express.Router();
+const storage = new Storage();
+const firestore = new Firestore();
 
 // Configure multer for file uploads (store in memory)
 const upload = multer({
@@ -92,23 +96,64 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     const documentId = uuidv4();
+    const bucketName = process.env.STORAGE_BUCKET;
+    const fileName = `${uid}/${documentId}/${file.originalname}`;
+    const blob = storage.bucket(bucketName).file(fileName);
 
-    // TODO: Implement document upload workflow
-    // 1. Upload file to Google Cloud Storage
-    //    - Path: `documents/${uid}/${documentId}/${file.originalname}`
-    // 2. Process document with Gemini API (via backend service)
-    // 3. Save metadata to Firestore
-    // 4. Return document metadata
+    // Upload file to Google Cloud Storage
+    try {
+      await new Promise((resolve, reject) => {
+        const blobStream = blob.createWriteStream({
+          resumable: false,
+          metadata: {
+            contentType: file.mimetype,
+          },
+        });
 
-    // Placeholder response
-    res.status(201).json({
-      id: documentId,
-      name: file.originalname,
-      category: category || 'uncategorized',
-      uploadDate: new Date().toISOString(),
-      size: file.size,
-      mimeType: file.mimetype
-    });
+        blobStream.on('error', err => {
+          console.error('Cloud Storage upload error:', err);
+          reject(new Error('Unable to upload file to Cloud Storage.'));
+        });
+
+        blobStream.on('finish', () => {
+          resolve();
+        });
+
+        blobStream.end(file.buffer);
+      });
+    } catch (uploadError) {
+      return res.status(500).json({ error: uploadError.message });
+    }
+
+    // Save metadata to Firestore
+    try {
+      const docRef = firestore.collection('documents').doc(documentId);
+      const documentMetadata = {
+        id: documentId,
+        userId: uid,
+        filename: file.originalname,
+        name: name || file.originalname, // Use provided name or original filename
+        fileType: file.mimetype,
+        size: file.size,
+        category: category || 'uncategorized',
+        storagePath: fileName,
+        uploadDate: new Date().toISOString(),
+      };
+      await docRef.set(documentMetadata);
+
+      res.status(201).json(documentMetadata);
+    } catch (firestoreError) {
+      // If Firestore save fails, attempt to delete the uploaded file from Cloud Storage
+      console.error('Firestore save error:', firestoreError);
+      try {
+        await blob.delete();
+        console.log('Successfully deleted file from Cloud Storage after Firestore error.');
+      } catch (deleteError) {
+        console.error('Error deleting file from Cloud Storage after Firestore error:', deleteError);
+      }
+      return res.status(500).json({ error: 'Failed to save document metadata.' });
+    }
+
   } catch (error) {
     console.error('Error uploading document:', error);
     res.status(500).json({

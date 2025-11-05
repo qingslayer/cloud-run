@@ -26,16 +26,33 @@ router.get('/', async (req, res) => {
     const { uid } = req.user; // UID from authenticated user
     const { category, limit = 50, offset = 0 } = req.query;
 
-    // TODO: Implement Firestore query to fetch documents
-    // - Filter by uid (required)
-    // - Filter by category (optional)
-    // - Apply pagination with limit and offset
-    // - Sort by upload date (newest first)
+    // Build the base query
+    let query = firestore.collection('documents').where('userId', '==', uid);
 
-    // Placeholder response
+    // Add optional category filter
+    if (category) {
+      query = query.where('category', '==', category);
+    }
+
+    // Get total count for pagination
+    const totalSnapshot = await query.count().get();
+    const total = totalSnapshot.data().count;
+
+    // Add sorting and pagination to the query
+    query = query.orderBy('uploadDate', 'desc').limit(parseInt(limit)).offset(parseInt(offset));
+
+    // Execute the query
+    const snapshot = await query.get();
+
+    // Extract documents from the snapshot
+    const documents = [];
+    snapshot.forEach(doc => {
+      documents.push(doc.data());
+    });
+
     res.json({
-      documents: [],
-      total: 0,
+      documents,
+      total,
       limit: parseInt(limit),
       offset: parseInt(offset)
     });

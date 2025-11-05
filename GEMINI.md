@@ -21,14 +21,14 @@ This file outlines the development plan and collaboration guidelines for our wor
 The backend implementation will be approached in four phases:
 
 ### 1. Authentication with Firebase (Complete)
--   **Strategy**: Integrate Firebase Authentication for secure user sign-up, login, and management.
--   **Implementation**: Add the `firebase-admin` SDK to the backend to verify user identity tokens on all protected API routes.
+- **Strategy**: Integrate Firebase Authentication for secure user sign-up, login, and management.
+- **Implementation**: Add the `firebase-admin` SDK to the backend to verify user identity tokens on all protected API routes.
 
 ### 2. Core API Endpoint Implementation
--   **Strategy**: Implement the core business logic, turning the backend into a secure proxy for all Google Cloud and Gemini API calls.
--   **Implementation**:
-                -   **File Uploads & Storage**: Implement `POST /api/upload` to securely upload files to Google Cloud Storage and save metadata to Firestore.
-                -   **AI Analysis**: Implement `/api/analyze` to process uploaded medical documents using Gemini's multimodal capabilities (text + image/PDF analysis).    -   **Data Retrieval**: Implement `GET /api/documents` and `GET /api/documents/:id` to list and retrieve document metadata from Firestore, including generating secure, temporary download URLs from Cloud Storage.
+- **Strategy**: Implement the core business logic, turning the backend into a secure proxy for all Google Cloud and Gemini API calls.
+- **Implementation**:
+    -**File Uploads & Storage**: Implement `POST /api/upload` to securely upload files to Google Cloud Storage and save metadata to Firestore.
+     -   **AI Analysis**: Implement `/api/analyze` to process uploaded medical documents using Gemini's multimodal capabilities (text + image/PDF analysis).    -   **Data Retrieval**: Implement `GET /api/documents` and `GET /api/documents/:id` to list and retrieve document metadata from Firestore, including generating secure, temporary download URLs from Cloud Storage.
                 -   **Search and Chat**: Implement `/api/search` and `/api/chat` endpoints for AI-powered document search and conversational queries.
 ### 3. Code Refactoring for Scalability
 -   **Strategy**: Proactively refactor API routes for better organization and maintainability.

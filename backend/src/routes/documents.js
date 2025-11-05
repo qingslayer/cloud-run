@@ -75,19 +75,42 @@ router.get('/:id', async (req, res) => {
     const { uid } = req.user;
     const { id } = req.params;
 
-    // TODO: Implement Firestore query to fetch document by ID
-    // - Verify user (uid) has access to this document
-    // - Generate signed URL for document download from Cloud Storage
-    // - Return document metadata and URL
+    // 1. Fetch document from Firestore
+    const docRef = firestore.collection('documents').doc(id);
+    const doc = await docRef.get();
 
-    // Placeholder response
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    const documentData = doc.data();
+
+    // 2. Verify user has access
+    if (documentData.userId !== uid) {
+      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
+    }
+
+    // 3. Generate signed URL for download
+    const bucketName = process.env.STORAGE_BUCKET;
+    const fileName = documentData.storagePath;
+
+    const options = {
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + 60 * 60 * 1000, // 1 hour
+    };
+
+    const [downloadUrl] = await storage
+      .bucket(bucketName)
+      .file(fileName)
+      .getSignedUrl(options);
+
+    // 4. Return document metadata and URL
     res.json({
-      id,
-      name: 'Sample Document',
-      category: 'lab_results',
-      uploadDate: new Date().toISOString(),
-      downloadUrl: null
+      ...documentData,
+      downloadUrl,
     });
+
   } catch (error) {
     console.error('Error fetching document:', error);
     res.status(500).json({

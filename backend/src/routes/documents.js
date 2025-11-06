@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { Storage } from '@google-cloud/storage';
-import { Firestore } from '@google-cloud/firestore';
+import { Firestore, FieldValue } from '@google-cloud/firestore';
 
 const router = express.Router();
 const storage = new Storage();
@@ -173,6 +173,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         userId: uid,
         filename: file.originalname,
         name: name || file.originalname, // Use provided name or original filename
+        displayName: null, // To be populated by AI analysis later
         fileType: file.mimetype,
         size: file.size,
         category: category || 'uncategorized',
@@ -274,6 +275,83 @@ router.delete('/:id', async (req, res) => {
     console.error(`Unhandled error during deletion of document ${id}:`, error);
     res.status(500).json({
       error: 'Failed to delete document',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * PATCH /api/documents/:id
+ * Edit a document's metadata
+ */
+router.patch('/:id', async (req, res) => {
+  const { uid } = req.user;
+  const { id } = req.params;
+  const updates = req.body;
+
+  console.log(`User ${uid} attempting to edit document ${id} with updates:`, updates);
+
+  try {
+    // 1. Fetch document from Firestore
+    const docRef = firestore.collection('documents').doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    const documentData = doc.data();
+
+    // 2. Verify user has access
+    if (documentData.userId !== uid) {
+      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
+    }
+
+    // 3. Validate request body
+    const immutableFields = ['id', 'userId', 'filename', 'fileType', 'size', 'storagePath', 'uploadDate'];
+    for (const field of immutableFields) {
+      if (updates.hasOwnProperty(field)) {
+        return res.status(400).json({ error: `Cannot update immutable field: ${field}` });
+      }
+    }
+
+    const updateData = {};
+    const editableFields = ['displayName', 'category', 'notes'];
+
+    for (const field of editableFields) {
+      if (updates.hasOwnProperty(field)) {
+        if (typeof updates[field] === 'string') {
+          updateData[field] = updates[field].trim();
+        } else {
+          updateData[field] = updates[field]; // Allow null for displayName
+        }
+      }
+    }
+    
+    // Don't allow category to be an empty string
+    if (updateData.category === '') {
+        return res.status(400).json({ error: 'Category cannot be an empty string.' });
+    }
+
+    // If there's nothing to update, just return the document
+    if (Object.keys(updateData).length === 0) {
+      return res.json(documentData);
+    }
+
+    // 4. Add lastModified timestamp
+    updateData.lastModified = FieldValue.serverTimestamp();
+
+    // 5. Update Firestore
+    await docRef.update(updateData);
+
+    // 6. Return updated document
+    const updatedDoc = await docRef.get();
+    res.json(updatedDoc.data());
+
+  } catch (error) {
+    console.error(`Error editing document ${id}:`, error);
+    res.status(500).json({
+      error: 'Failed to edit document',
       message: error.message
     });
   }

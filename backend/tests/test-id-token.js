@@ -24,7 +24,7 @@ connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
 const TEST_EMAIL = "test@example.com";
 const TEST_PASSWORD = "password123";
 
-async function getEmulatorIdToken() {
+export async function getIDToken() {
   try {
     console.log(`\n🔐 Attempting to sign in with ${TEST_EMAIL} using the Firebase Emulator...`);
     console.log(`📍 Project ID: ${firebaseConfig.projectId}`);

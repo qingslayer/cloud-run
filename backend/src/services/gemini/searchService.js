@@ -13,8 +13,11 @@ import { ai, model } from './client.js';
  */
 export async function processSearchQuery(query, documents = []) {
   const documentContext = documents
-    .filter(doc => doc.extractedText)
-    .map(doc => `--- DOCUMENT: ${doc.title} (Category: ${doc.category}) ---\n${doc.extractedText}\n--- END DOCUMENT ---`)
+    .map(doc => {
+      const a = doc.aiAnalysis || {};
+      const keyFindings = (a.keyFindings || []).map(f => `- ${f.finding}: ${f.result}`).join('\n');
+      return `--- DOCUMENT: ${doc.displayName} (Category: ${doc.category}) ---\nSummary: ${a.summary}\nProvider: ${a.provider}\nKey Findings:\n${keyFindings}\n--- END DOCUMENT ---`;
+    })
     .join('\n\n');
 
   const prompt = `You are a direct Q&A engine for a health app. Your task is to answer the user's question factually and concisely based *only* on the provided document context. 

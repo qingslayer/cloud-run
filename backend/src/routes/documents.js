@@ -357,4 +357,91 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
+import { extractTextFromDocument, analyzeAndCategorizeDocument, extractStructuredData } from '../services/gemini/documentProcessor.js';
+
+// ... (existing router code)
+
+/**
+ * POST /api/documents/:id/analyze
+ * Trigger AI analysis for a document
+ */
+router.post('/:id/analyze', async (req, res) => {
+  const { uid } = req.user;
+  const { id } = req.params;
+
+  console.log(`User ${uid} starting analysis for document ${id}`);
+
+  try {
+    // 1. Fetch document from Firestore and verify ownership
+    const docRef = firestore.collection('documents').doc(id);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    const documentData = doc.data();
+
+    if (documentData.userId !== uid) {
+      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
+    }
+
+    // 2. Download file from Cloud Storage
+    console.log(`Downloading gs://${process.env.STORAGE_BUCKET}/${documentData.storagePath}`);
+    const fileBuffer = await storage.bucket(process.env.STORAGE_BUCKET).file(documentData.storagePath).download();
+    const base64Data = fileBuffer[0].toString('base64');
+    console.log(`File downloaded and converted to base64 (size: ${base64Data.length})`);
+
+    // 3. Analyze with Gemini (using existing services)
+    let analysisResults;
+    try {
+      console.log('Extracting text...');
+      const extractedText = await extractTextFromDocument(base64Data, documentData.fileType);
+      console.log(`Text extracted (length: ${extractedText.length})`);
+
+      console.log('Analyzing and categorizing...');
+      const categorization = await analyzeAndCategorizeDocument(extractedText);
+      console.log('Categorization complete:', categorization);
+
+      console.log('Extracting structured data...');
+      const structuredData = await extractStructuredData(extractedText, categorization.category);
+      console.log('Structured data extraction complete.');
+
+      analysisResults = {
+        extractedText,
+        displayName: categorization.title,
+        category: categorization.category,
+        aiAnalysis: {
+          ...structuredData, // Contains fields like dateOfService, provider, keyFindings, summary
+        },
+        analyzedAt: FieldValue.serverTimestamp(),
+      };
+
+    } catch (aiError) {
+      console.error(`AI processing failed for document ${id}:`, aiError);
+      const userMessage = 'Unable to analyze document. The AI model could not process the file.';
+      return res.status(500).json({
+        error: userMessage,
+        details: process.env.NODE_ENV !== 'production' ? aiError.message : undefined,
+      });
+    }
+
+    // 4. Save the results to Firestore
+    console.log('Saving analysis results to Firestore...');
+    await docRef.update(analysisResults);
+    console.log('Firestore updated successfully.');
+
+    // 5. Return the complete, updated document
+    const updatedDoc = await docRef.get();
+    res.json(updatedDoc.data());
+
+  } catch (error) {
+    console.error(`Unhandled error during analysis of document ${id}:`, error);
+    res.status(500).json({
+      error: 'A server error occurred during document analysis.',
+      details: process.env.NODE_ENV !== 'production' ? error.message : undefined,
+    });
+  }
+});
+
 export default router;

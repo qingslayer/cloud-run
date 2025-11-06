@@ -150,6 +150,28 @@ node tests/test-edit-document.js ~/Downloads/sample.png
 
 ---
 
+### `test-analyze-document.js`
+
+Tests the AI document analysis endpoint with full metadata verification.
+
+```bash
+node tests/test-analyze-document.js <path_to_file>
+```
+
+**Example**:
+```bash
+node tests/test-analyze-document.js ~/Downloads/sample-lab-report.pdf
+```
+
+**What it does**:
+- Automatically obtains a fresh token from the Auth Emulator
+- Uploads the specified file to create a new document
+- Triggers AI analysis via the `/api/documents/:id/analyze` endpoint
+- Verifies that AI-generated data is correctly added to the document's metadata in Firestore
+- Checks for `displayName`, `category`, `extractedText`, `aiAnalysis`, and `analyzedAt` fields
+
+---
+
 ## Adding New Tests
 
 When adding new feature tests:

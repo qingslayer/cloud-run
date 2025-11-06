@@ -128,6 +128,28 @@ node tests/test-delete-document.js ~/Downloads/sample.png
 
 ---
 
+### `test-edit-document.js`
+
+Tests the document editing endpoint with metadata updates and immutable field protection.
+
+```bash
+node tests/test-edit-document.js <path_to_file>
+```
+
+**Example**:
+```bash
+node tests/test-edit-document.js ~/Downloads/sample.png
+```
+
+**What it does**:
+- Automatically obtains a fresh token from the Auth Emulator
+- Uploads the specified file to create a new document
+- Edits the document metadata (name, category, notes) via the `/api/documents/:id` endpoint
+- Fetches the document to verify that the changes were applied correctly
+- Tests immutable field protection (userId, storagePath, createdAt)
+
+---
+
 ## Adding New Tests
 
 When adding new feature tests:

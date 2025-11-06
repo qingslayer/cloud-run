@@ -24,12 +24,19 @@ The backend implementation will be approached in four phases:
 - **Strategy**: Integrate Firebase Authentication for secure user sign-up, login, and management.
 - **Implementation**: Add the `firebase-admin` SDK to the backend to verify user identity tokens on all protected API routes.
 
-### 2. Core API Endpoint Implementation
-- **Strategy**: Implement the core business logic, turning the backend into a secure proxy for all Google Cloud and Gemini API calls.
+### 2. Core API Endpoint Implementation (In Progress)
+- **Strategy**: Implement the core business logic for document management and AI-powered features.
 - **Implementation**:
-    -**File Uploads & Storage**: Implement `POST /api/upload` to securely upload files to Google Cloud Storage and save metadata to Firestore.
-     -   **AI Analysis**: Implement `/api/analyze` to process uploaded medical documents using Gemini's multimodal capabilities (text + image/PDF analysis).    -   **Data Retrieval**: Implement `GET /api/documents` and `GET /api/documents/:id` to list and retrieve document metadata from Firestore, including generating secure, temporary download URLs from Cloud Storage.
-                -   **Search and Chat**: Implement `/api/search` and `/api/chat` endpoints for AI-powered document search and conversational queries.
+    - **Document CRUD Operations (Complete)**:
+        - `POST /api/documents/upload`: Securely upload files to Google Cloud Storage and save metadata to Firestore.
+        - `GET /api/documents`: List all documents for the authenticated user with filtering and pagination.
+        - `GET /api/documents/:id`: Retrieve a single document's metadata and a secure download URL.
+        - `PATCH /api/documents/:id`: Edit a document's metadata (e.g., `displayName`, `category`, `notes`).
+        - `DELETE /api/documents/:id`: Permanently delete a document from Cloud Storage and Firestore.
+    - **AI-Powered Features (Next)**:
+        - `/api/analyze`: Process uploaded documents using Gemini to generate a `displayName`, summarize content, and extract structured data.
+        - `/api/search`: Implement AI-powered document search.
+        - `/api/chat`: Implement conversational queries about documents.
 ### 3. Code Refactoring for Scalability
 -   **Strategy**: Proactively refactor API routes for better organization and maintainability.
     -   Move the logic for each endpoint into its own file within the `backend/src/routes` directory (e.g., `documents.js`, `chat.js`, `analyze.js`).

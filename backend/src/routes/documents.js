@@ -209,24 +209,69 @@ router.post('/upload', upload.single('file'), async (req, res) => {
  * Removes from both Cloud Storage and Firestore
  */
 router.delete('/:id', async (req, res) => {
+  const { uid } = req.user;
+  const { id } = req.params;
+
+  console.log(`User ${uid} attempting to delete document ${id}`);
+
   try {
-    const { uid } = req.user;
-    const { id } = req.params;
+    // 1. Fetch document from Firestore
+    const docRef = firestore.collection('documents').doc(id);
+    const doc = await docRef.get();
 
-    // TODO: Implement document deletion
-    // 1. Verify user (uid) owns this document (check Firestore)
-    // 2. Delete file from Cloud Storage
-    // 3. Delete metadata from Firestore
-    // 4. Return success response
+    if (!doc.exists) {
+      console.log(`Document ${id} not found for deletion attempt by user ${uid}.`);
+      return res.status(404).json({ error: 'Document not found' });
+    }
 
-    // Placeholder response
-    res.json({
+    const documentData = doc.data();
+
+    // 2. Verify user has access
+    if (documentData.userId !== uid) {
+      console.warn(`User ${uid} forbidden to delete document ${id}. Document owned by ${documentData.userId}.`);
+      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
+    }
+
+    // 3. Delete file from Cloud Storage
+    const bucketName = process.env.STORAGE_BUCKET;
+    const fileName = documentData.storagePath;
+    const file = storage.bucket(bucketName).file(fileName);
+
+    const [exists] = await file.exists();
+    if (exists) {
+      try {
+        await file.delete();
+        console.log(`Successfully deleted gs://${bucketName}/${fileName} for document ${id}.`);
+      } catch (storageError) {
+        console.error(`Error deleting file from Cloud Storage for document ${id}:`, storageError);
+        // If storage deletion fails, we don't want to delete the Firestore record
+        return res.status(500).json({ error: 'Failed to delete file from storage.' });
+      }
+    } else {
+      console.warn(`File gs://${bucketName}/${fileName} for document ${id} not found in Cloud Storage. Orphaned Firestore record?`);
+    }
+
+    // 4. Delete metadata from Firestore
+    try {
+      await docRef.delete();
+      console.log(`Successfully deleted document ${id} from Firestore.`);
+    } catch (firestoreError) {
+      console.error(`CRITICAL: Failed to delete document ${id} from Firestore after deleting from Cloud Storage. ORPHANED FILE.`, firestoreError);
+      // This is a critical error to log, as we now have an orphaned file in Cloud Storage.
+      // The client doesn't need to know the details, but we should return an error.
+      return res.status(500).json({ error: 'Failed to delete document metadata.' });
+    }
+
+    // 5. Return success response
+    console.log(`User ${uid} successfully deleted document ${id}.`);
+    res.status(200).json({
       success: true,
       message: 'Document deleted successfully',
       id
     });
+
   } catch (error) {
-    console.error('Error deleting document:', error);
+    console.error(`Unhandled error during deletion of document ${id}:`, error);
     res.status(500).json({
       error: 'Failed to delete document',
       message: error.message

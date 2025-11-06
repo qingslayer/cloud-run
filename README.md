@@ -2,19 +2,32 @@
 
 ```
 cloud-run/
-├── backend/          # Backend API server
-│   └── src/
-│       ├── routes/   # API routes
-│       ├── services/
-│       │   └── gemini/  # Gemini AI service integration
-│       └── config/   # Backend configuration
-├── frontend/         # React frontend application
-│   └── src/
-│       ├── components/  # React components
-│       ├── services/    # Frontend services
-│       ├── utils/       # Utility functions
-│       └── App.tsx      # Main app component
-└── README.md
+├── backend/                    # Express.js backend
+│   ├── src/
+│   │   ├── routes/             # API endpoints
+│   │   │   ├── ai.js           # AI operations (chat, search, processing)
+│   │   │   └── documents.js    # Document CRUD
+│   │   ├── services/
+│   │   │   └── gemini/         # AI service layer (server-only)
+│   │   │       ├── client.js
+│   │   │       ├── chatService.js
+│   │   │       ├── searchService.js
+│   │   │       └── documentProcessor.js
+│   │   ├── middleware/
+│   │   │   └── auth.js         # Authentication
+│   │   └── server.js           # Express app entry point
+│   └── tests/                  # API integration tests
+│
+└── frontend/                   # React + TypeScript frontend
+    └── src/
+        ├── components/         # UI components
+        ├── services/           # Backend API clients
+        │   ├── chatService.ts
+        │   ├── searchService.ts
+        │   └── documentProcessor.ts
+        ├── config/
+        │   └── api.ts          # API configuration
+        └── App.tsx             # Main app component
 ```
 
 ## Getting Started
@@ -29,6 +42,7 @@ cloud-run/
   - Mac: `brew install google-cloud-sdk`
   - Windows / Linux: [installation guide](https://cloud.google.com/sdk/docs/install)
   - Verify: `gcloud --version`
+- Gemini API
 
 ### Google Cloud Setup
 

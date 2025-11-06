@@ -11,10 +11,8 @@ import RightPanel from './components/RightPanel';
 import Settings from './components/Settings';
 import TopCommandBar from './components/TopCommandBar';
 import SearchResultsPage from './components/SearchResultsPage';
-import { Chat } from '@google/genai';
-import { createChatSession } from './services/chatService';
+import { sendChatMessage } from './services/chatService';
 import { processUniversalSearch } from './services/searchService';
-import { shouldUseAI, filterDocuments } from './services/smartFilter';
 
 
 const App: React.FC = () => {
@@ -34,9 +32,6 @@ const App: React.FC = () => {
   const [pageSearchResults, setPageSearchResults] = useState<UniversalSearchResult | null>(null);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Unified AI state
-  const [chatSession, setChatSession] = useState<Chat | null>(null);
 
 
   useEffect(() => {
@@ -127,7 +122,6 @@ const App: React.FC = () => {
   };
 
   const handleSendMessage = useCallback(async (message: string) => {
-    const processedDocuments = documents.filter(d => d.status === 'complete');
     if (!message.trim()) return;
 
     const userMessage: ChatMessageType = { id: Date.now().toString(), role: 'user', text: message };
@@ -135,15 +129,14 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-        let session = chatSession;
-        // If there's no active session, create a new one.
-        if (!session) {
-            session = createChatSession(processedDocuments);
-            setChatSession(session);
-        }
-
-        const aiResponse = await session.sendMessage({ message });
-        const aiMessage: ChatMessageType = { id: (Date.now() + 1).toString(), role: 'model', text: aiResponse.text };
+        // Send message with chat history to backend
+        const result = await sendChatMessage(message, chatMessages);
+        
+        const aiMessage: ChatMessageType = { 
+          id: (Date.now() + 1).toString(), 
+          role: 'model', 
+          text: result.text 
+        };
         setChatMessages(prev => [...prev, aiMessage]);
 
     } catch (error) {
@@ -157,13 +150,12 @@ const App: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [documents, chatSession]);
+  }, [chatMessages]);
   
   const handleSearchSubmit = async (query: string) => {
     if (!query.trim()) return;
 
-    // End any previous session
-    setChatSession(null);
+    // Clear chat messages when starting new search
     setChatMessages([]);
 
     setSearchQuery(query);
@@ -171,22 +163,17 @@ const App: React.FC = () => {
     setPageSearchResults(null);
     setView('search');
 
-    const processedDocuments = documents.filter(d => d.status === 'complete');
-    
-    const useAI = shouldUseAI(query);
-
     try {
-        let searchResult: UniversalSearchResult;
-        if (useAI) {
-            searchResult = await processUniversalSearch(query, processedDocuments);
-        } else {
-            const filteredDocs = filterDocuments(query, processedDocuments);
-            searchResult = { type: 'documents', documents: filteredDocs };
-        }
+        // Backend handles AI vs simple search logic
+        const searchResult = await processUniversalSearch(query);
         setPageSearchResults(searchResult);
     } catch (error) {
         console.error("Search failed:", error);
-        setPageSearchResults({ type: 'answer', answer: 'Sorry, an error occurred during the search.', sources: [] });
+        setPageSearchResults({ 
+          type: 'answer', 
+          answer: 'Sorry, an error occurred during the search.', 
+          sources: [] 
+        });
     } finally {
         setIsSearchLoading(false);
     }
@@ -195,15 +182,13 @@ const App: React.FC = () => {
   const handleAskFollowUp = () => {
     if (pageSearchResults?.type !== 'answer' || !pageSearchResults.answer) return;
 
-    const processedDocuments = documents.filter(d => d.status === 'complete');
-    const initialHistory = [
-        { role: 'user' as const, text: searchQuery },
-        { role: 'model' as const, text: pageSearchResults.answer },
+    // Set initial chat history from search
+    const initialHistory: ChatMessageType[] = [
+        { id: 'followup-0', role: 'user', text: searchQuery },
+        { id: 'followup-1', role: 'model', text: pageSearchResults.answer },
     ];
 
-    const newSession = createChatSession(processedDocuments, initialHistory);
-    setChatSession(newSession);
-    setChatMessages(initialHistory.map((msg, i) => ({ ...msg, id: `followup-${i}` })));
+    setChatMessages(initialHistory);
     
     setView('dashboard');
     setIsRightPanelOpen(true);
@@ -218,7 +203,6 @@ const App: React.FC = () => {
     setIsAuthenticated(false);
     setDocuments([]);
     setChatMessages([]);
-    setChatSession(null);
     setView('dashboard');
   };
 

@@ -13,7 +13,7 @@ if (missingEnvVars.length > 0) {
 
 import { Storage } from '@google-cloud/storage';
 import { Firestore } from '@google-cloud/firestore';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import admin from './src/config/firebase.js';
 
 console.log('🧪 Testing GCP connections...\n');
@@ -21,10 +21,12 @@ console.log('🧪 Testing GCP connections...\n');
 // Test Gemini
 console.log('Testing Gemini API...');
 try {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-  const result = await model.generateContent("Say hello in one word");
-  const text = result.response.text();
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const response = await ai.models.generateContent({
+    model: "gemini-2.0-flash-exp",
+    contents: { parts: [{ text: "Say hello in one word" }] }
+  });
+  const text = response.text;
   console.log('✅ Gemini API connected');
   console.log(`   Response: ${text}\n`);
 } catch (error) {

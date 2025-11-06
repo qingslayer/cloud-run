@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { DocumentFile } from '../types';
 import { UploadIcon } from './icons/UploadIcon';
-import { extractTextFromDocument, extractStructuredData, analyzeAndCategorizeDocument } from '../services/documentProcessor';
+import { processDocument } from '../services/documentProcessor';
 
 interface DocumentUploaderProps {
   onFilesChange: (files: DocumentFile[]) => void;
@@ -93,24 +93,20 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFilesChange, onUp
         // The 'base64Data' field is now used as a placeholder for the cloud storage path/ID.
         const cloudFileIdentifier = await uploadFileToCloud(file);
         
-        // Step 2: For AI processing, we still need the file content. 
-        // We generate a Base64 string on-the-fly for the AI, but don't store it long-term in the main state.
+        // Step 2: Convert file to base64 and send to backend for AI processing
         const processingBase64 = await fileToBase64(file);
         
-        const extractedText = await extractTextFromDocument({ base64Data: processingBase64, type: file.type });
-        
-        const { title, category } = await analyzeAndCategorizeDocument(extractedText);
-
-        const structuredData = await extractStructuredData({ ...doc, extractedText, title, category, base64Data: processingBase64 });
+        // Call backend API to process the document (extract, categorize, structure)
+        const result = await processDocument(processingBase64, file.type);
         
         // Step 3: Update the document with the final, processed data and its cloud identifier.
         onUpdateDocument(doc.id, {
           base64Data: cloudFileIdentifier, // Now this field stores the cloud path, not the file content.
-          extractedText,
-          title, 
-          category,
-          status: 'review',
-          structuredData,
+          extractedText: result.extractedText,
+          title: result.title, 
+          category: result.category,
+          status: result.status,
+          structuredData: result.structuredData,
         });
 
       } catch (error) {

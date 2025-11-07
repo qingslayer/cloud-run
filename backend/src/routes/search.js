@@ -1,4 +1,3 @@
-
 import express from 'express';
 import { Firestore } from '@google-cloud/firestore';
 import { processSearchQuery, shouldUseAISearch } from '../services/gemini/searchService.js';

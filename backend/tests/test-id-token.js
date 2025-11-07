@@ -59,4 +59,7 @@ export async function getIDToken() {
   }
 }
 
-getEmulatorIdToken();
+// If running this file directly (not imported), execute the function
+if (import.meta.url === `file://${process.argv[1]}`) {
+  getIDToken();
+}

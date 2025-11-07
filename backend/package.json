@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "get-token": "node test-id-token.js"
+    "get-token": "node tests/test-id-token.js",
+    "test-search": "node tests/test-search.js",
+    "test-search-simple": "node tests/test-search-simple.js"
   },
   "keywords": [
     "express",

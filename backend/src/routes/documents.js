@@ -65,6 +65,56 @@ router.get('/', async (req, res) => {
   }
 });
 
+import { analyzeQuery } from '../services/queryAnalyzer.js';
+
+/**
+ * POST /api/documents/search
+ * The unified search endpoint for all user queries.
+ */
+router.post('/search', async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { query } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+
+    const { type, category, keywords, timeRange } = analyzeQuery(query);
+
+    switch (type) {
+      case 'documents': {
+        let firestoreQuery = firestore.collection('documents').where('userId', '==', uid);
+        if (category) {
+          firestoreQuery = firestoreQuery.where('category', '==', category);
+        }
+        // Add timeRange filter later
+        const snapshot = await firestoreQuery.get();
+        const documents = snapshot.docs.map(doc => doc.data());
+        
+        console.log(`Simple search for category '${category}' returned ${documents.length} documents. No AI was used.`);
+
+        return res.json({
+          type: 'documents',
+          query,
+          results: documents,
+          count: documents.length,
+        });
+      }
+      case 'summary':
+      case 'answer':
+      case 'chat':
+        return res.status(511).json({ type, message: 'This search type is not implemented yet.' });
+
+      default:
+        return res.status(400).json({ error: 'Invalid query type' });
+    }
+  } catch (error) {
+    console.error('Error in unified search:', error);
+    res.status(500).json({ error: 'Failed to execute search' });
+  }
+});
+
 /**
  * GET /api/documents/:id
  * Get a single document by ID

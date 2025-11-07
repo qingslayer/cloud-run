@@ -58,8 +58,6 @@ app.get('/health', (req, res) => {
 
 import authMiddleware from './middleware/auth.js';
 import documentsRouter from './routes/documents.js';
-import aiRouter from './routes/ai.js';
-import searchRouter from './routes/search.js';
 
 const apiRouter = express.Router();
 
@@ -68,8 +66,6 @@ apiRouter.use(authMiddleware);
 
 // Mount the modular routers
 apiRouter.use('/documents', documentsRouter);
-apiRouter.use('/ai', aiRouter);
-apiRouter.use('/search', searchRouter);
 
 // Mount the main API router
 app.use('/api', apiRouter);

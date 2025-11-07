@@ -2,6 +2,8 @@ import express from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { Storage } from '@google-cloud/storage';
+import { getAISummary, processSearchQuery } from '../services/gemini/searchService.js';
+import { analyzeQuery } from '../services/queryAnalyzer.js';
 import { Firestore, FieldValue } from '@google-cloud/firestore';
 
 const router = express.Router();
@@ -65,7 +67,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-import { analyzeQuery } from '../services/queryAnalyzer.js';
+
 
 /**
  * POST /api/documents/search
@@ -101,10 +103,19 @@ router.post('/search', async (req, res) => {
           count: documents.length,
         });
       }
-      case 'summary':
+      
+
+// ... (existing code)
+
+      case 'summary': {
+        const documentsSnapshot = await firestore.collection('documents').where('userId', '==', uid).get();
+        const documents = documentsSnapshot.docs.map(doc => doc.data());
+        const summaryResult = await getAISummary(query, documents);
+        return res.json({ type: 'summary', query, ...summaryResult });
+      }
       case 'answer':
       case 'chat':
-        return res.status(511).json({ type, message: 'This search type is not implemented yet.' });
+        return res.status(501).json({ type, message: 'This search type is not implemented yet.' });
 
       default:
         return res.status(400).json({ error: 'Invalid query type' });

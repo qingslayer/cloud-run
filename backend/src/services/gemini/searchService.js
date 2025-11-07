@@ -59,28 +59,53 @@ ${documentContext}
   }
 }
 
-/**
- * Determine if a query should use AI search
- * @param {string} query - Search query
- * @returns {boolean}
- */
-export function shouldUseAISearch(query) {
-  const lowerCaseQuery = query.toLowerCase().trim();
+export async function getAISummary(query, documents = []) {
+  const documentContext = documents
+    .map(doc => {
+      const a = doc.aiAnalysis || {};
+      const keyFindings = (a.keyFindings || []).map(f => `- ${f.finding}: ${f.result}`).join('\n');
+      return `--- DOCUMENT: ${doc.displayName} (Category: ${doc.category}) ---\nSummary: ${a.summary}\nProvider: ${a.provider}\nKey Findings:\n${keyFindings}\n--- END DOCUMENT ---`;
+    })
+    .join('\n\n');
 
-  // Question indicators
-  if (lowerCaseQuery.endsWith('?')) return true;
+  const prompt = `You are a health document summarization engine. Your task is to provide a concise, high-level overview based on the user's query and the provided document context. Identify the most relevant documents and synthesize their key findings into a brief summary.
 
-  const QUESTION_WORDS = ['what', 'who', 'when', 'where', 'why', 'how', 'is', 'are', 'can', 'do', 'does', 'show me'];
-  const words = lowerCaseQuery.split(' ');
-  if (QUESTION_WORDS.includes(words[0])) return true;
+--- DOCUMENT CONTEXT ---
+${documentContext}
+--- END DOCUMENT CONTEXT ---
 
-  // Interpretation keywords
-  const INTERPRETATION_KEYWORDS = ['results', 'summary', 'details', 'values', 'normal', 'meaning', 'findings', 'impression'];
-  if (INTERPRETATION_KEYWORDS.some(keyword => lowerCaseQuery.includes(keyword))) return true;
+**User Query:** "${query}"
 
-  // Contains medical abbreviations (all caps)
-  if (words.some(word => word.length > 2 && word === word.toUpperCase())) return true;
+**Instructions:**
+1.  **Identify Relevant Documents:** First, determine which of the provided documents are most relevant to the user's query.
+2.  **Generate a Concise Summary:** Based on the relevant documents, write a 1-3 sentence summary that directly addresses the user's query.
+3.  **List Key Documents:** List the top 3-5 most relevant documents with their display name and category.
+4.  **Suggest Follow-up Questions:** Provide 2-3 insightful follow-up questions the user might have.
+5.  **Format the Output:** Return a JSON object with the following structure: { "summary": "...", "documents": [{"id": "...", "displayName": "...", "category": "..."}], "suggestedFollowUps": ["...", "..."] }. The documents should be the full document objects, not just the IDs. Make sure the JSON is valid.
 
-  return false;
+**JSON Response:**`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: { parts: [{ text: prompt }] }
+    });
+    try {
+      // Extract JSON from markdown code block if present
+      const jsonRegex = /```json\n([\s\S]*?)\n```/;
+      const match = response.text.match(jsonRegex);
+      const jsonString = match ? match[1] : response.text;
+
+      const jsonResponse = JSON.parse(jsonString);
+      return jsonResponse;
+    } catch (e) {
+      console.error('Error parsing AI summary JSON:', e);
+      console.error('AI Response Text:', response.text);
+      throw new Error('Failed to parse AI summary response.');
+    }
+  } catch (error) {
+    console.error('AI summary generation failed:', error);
+    throw new Error('Failed to generate AI summary: ' + error.message);
+  }
 }
 

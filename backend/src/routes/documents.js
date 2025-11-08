@@ -6,6 +6,7 @@ import { getAIChatResponse } from '../services/gemini/chatService.js';
 import { getAISummary, getAIAnswer } from '../services/gemini/searchService.js';
 import { Firestore, FieldValue } from '@google-cloud/firestore';
 import { analyzeQuery } from '../services/queryAnalyzer.js';
+import sessionCache from '../services/sessionCache.js';
 
 
 const router = express.Router();
@@ -130,6 +131,17 @@ router.post('/search', async (req, res) => {
         const documentsSnapshot = await firestore.collection('documents').where('userId', '==', uid).get();
         const documents = documentsSnapshot.docs.map(doc => doc.data());
         const chatResult = await getAIChatResponse(query, documents);
+
+        // Cache the new session
+        sessionCache.set(sessionId, {
+          userId: uid,
+          documents,
+          conversationHistory: [
+            { role: 'user', text: query },
+            { role: 'model', text: chatResult.answer },
+          ],
+        });
+
         return res.json({
           type: 'chat',
           query,

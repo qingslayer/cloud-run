@@ -2,7 +2,7 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import FormData from 'form-data';
 import { getIDToken } from '../utils/id-token.test.js';
-import { API_DOCUMENTS_URL } from '../utils/config.test.js';
+import { API_DOCUMENTS_URL } from '../utils/test-config.js';
 
 // Get file path from command line
 const filePath = process.argv[2];

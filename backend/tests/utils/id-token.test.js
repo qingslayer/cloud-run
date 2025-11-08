@@ -2,7 +2,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, connectAuthEmulator } from 'firebase/auth';
 import dotenv from 'dotenv';
-import { TEST_EMAIL, TEST_PASSWORD, AUTH_EMULATOR_URL } from './config.test.js';
+import { TEST_EMAIL, TEST_PASSWORD, AUTH_EMULATOR_URL } from './test-config.js';
 
 // Load environment variables
 dotenv.config();

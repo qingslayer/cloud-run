@@ -4,7 +4,7 @@ import FormData from 'form-data';
 import dotenv from 'dotenv';
 import path from 'path';
 import { getIDToken } from '../utils/id-token.test.js';
-import { API_DOCUMENTS_URL } from '../utils/config.test.js';
+import { API_DOCUMENTS_URL } from '../utils/test-config.js';
 
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });

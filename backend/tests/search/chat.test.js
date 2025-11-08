@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import { getIDToken } from '../utils/id-token.test.js';
-import { API_SEARCH_URL } from '../utils/config.test.js';
+import { API_SEARCH_URL } from '../utils/test-config.js';
 
 async function testChatSearch() {
   console.log('--- Running test: Chat Search ---');

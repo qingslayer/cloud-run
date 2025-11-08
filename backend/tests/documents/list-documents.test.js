@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import { getIDToken } from '../utils/id-token.test.js';
-import { API_DOCUMENTS_URL } from '../utils/config.test.js';
+import { API_DOCUMENTS_URL } from '../utils/test-config.js';
 
 // Get query parameters from command line
 const category = process.argv[2];

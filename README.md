@@ -1,3 +1,19 @@
+# HealthVault
+
+Personal health records management system with AI-powered document analysis and search.
+
+## Table of Contents
+
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Google Cloud Setup](#google-cloud-setup)
+- [Run Locally](#run-locally)
+- [API Endpoints](#api-endpoints)
+- [Technology Stack](#technology-stack)
+- [Testing](#testing)
+
+---
+
 ## Project Structure
 
 ```
@@ -81,70 +97,74 @@ gcloud firestore databases create --location=europe-west1
 
 ### Backend Setup
 
-1. Navigate to backend directory:
+**1. Navigate to backend directory:**
 ```bash
-   cd backend
+cd backend
 ```
 
-2. Install dependencies:
+**2. Install dependencies:**
 ```bash
-   npm install
+npm install
 ```
 
-3. Configure environment variables:
+**3. Configure environment variables:**
 ```bash
-   cp .env.example .env
+cp .env.example .env
 ```
-   Then edit `.env` and set:
-   - `GEMINI_API_KEY` - get from [Google AI Studio](https://aistudio.google.com/app/apikey)
-   - `PROJECT_ID` - your Google Cloud project ID
-   - `STORAGE_BUCKET` - your Cloud Storage bucket name
 
-4. Verify connections:
-```bash
-   node tests/connection.test.js
-```
-   Should show ✅ for all four services.
+Edit `.env` and set:
+- `GEMINI_API_KEY` - Get from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- `PROJECT_ID` - Your Google Cloud project ID
+- `STORAGE_BUCKET` - Your Cloud Storage bucket name (e.g., `healthvault-YOUR-PROJECT-ID`)
 
-   **If you see ❌ errors:**
+**4. Verify connections:**
 ```bash
-   gcloud auth application-default login                 # re-authenticate
-   gcloud auth application-default print-access-token    # confirm auth access
-   gcloud config get-value project                       # verify project
-   gcloud services list --enabled | grep -E "run|storage|firestore|firebase" # check APIs
+node tests/connection.test.js
 ```
-   Also double-check your `.env` values.
 
-5. Start the development server:
+Should show ✅ for all four services (Gemini, Storage, Firestore, Firebase).
+
+**If you see ❌ errors:**
 ```bash
-   npm run dev
+gcloud auth application-default login                 # re-authenticate
+gcloud auth application-default print-access-token    # confirm auth access
+gcloud config get-value project                       # verify project
+gcloud services list --enabled | grep -E "run|storage|firestore|firebase" # check APIs
 ```
-   The backend will run on `http://localhost:8080`
+Also double-check your `.env` values.
+
+**5. Start the development server:**
+```bash
+npm run dev
+```
+
+The backend will run on `http://localhost:8080`
 
 ### Frontend Setup
 
-1. Navigate to frontend directory:
+**1. Navigate to frontend directory:**
 ```bash
-   cd frontend
+cd frontend
 ```
 
-2. Install dependencies:
+**2. Install dependencies:**
 ```bash
-   npm install
+npm install
 ```
 
-3. Configure environment variables:
+**3. Configure environment variables:**
 ```bash
-   cp .env.example .env
+cp .env.example .env
 ```
-   - Default points to `http://localhost:8080`
-   - Update `VITE_API_URL` if your backend runs on a different port
 
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
-   The frontend will run on `http://localhost:5173`
+Default points to `http://localhost:8080`. Update `VITE_API_URL` if your backend runs on a different port.
+
+**4. Start the development server:**
+```bash
+npm run dev
+```
+
+The frontend will run on `http://localhost:5173`
 
 ### API Endpoints
 
@@ -170,3 +190,33 @@ The backend provides the following endpoints:
 - React + TypeScript
 - Vite - Build tool
 - TailwindCSS - Styling
+
+---
+
+## Testing
+
+### Connection Test
+
+Verify your GCP service connections before running the app:
+
+```bash
+cd backend
+node tests/connection.test.js
+```
+
+Should show ✅ for all four services (Gemini, Storage, Firestore, Firebase).
+
+### Feature Tests
+
+The backend includes comprehensive API tests. See [`backend/tests/README.md`](backend/tests/README.md) for:
+- Document management tests (upload, list, get, edit, delete, analyze)
+- Chat tests (basic conversation, session caching)
+- Search tests (simple, semantic, answer, chat)
+
+**Quick start:**
+```bash
+cd backend
+node tests/<category>/<test-name>.test.js
+```
+
+For detailed test documentation, setup instructions, and troubleshooting, see the [Testing Guide](backend/tests/README.md).

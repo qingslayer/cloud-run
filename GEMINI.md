@@ -12,6 +12,7 @@ This file outlines the development plan and collaboration guidelines for our wor
 
 -   **Reference Documentation**: Always reference official Google documentation and best practices for all features.
 -   **Code Quality**: Prioritize clean, efficient, and scalable code.
+-   **Don't Repeat Yourself**: If the same code is being repeated across multiple files, turn it into a function or constant that can be imported where we need it. This makes our code easier to maintain and centralize future changes / updates.
 -   **Isolated Changes**: When troubleshooting, only make code changes directly related to the issue being addressed. No other changes should be made to UI or app functionality.
 -   **Clean Up**: If an attempted solution does not work, remove any unused or redundant code to prevent future issues.
 -   **Clarification Over Assumption**: If instructions or next steps are unclear, always ask for clarification before proceeding.

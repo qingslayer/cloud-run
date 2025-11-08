@@ -11,7 +11,7 @@ import { ai, model } from './client.js';
  * @param {Array} documents - User's documents to search
  * @returns {Promise<{answer: string, sources: Array}>}
  */
-export async function processSearchQuery(query, documents = []) {
+export async function getAIAnswer(query, documents = []) {
   const documentContext = documents
     .map(doc => {
       const a = doc.aiAnalysis || {};
@@ -21,43 +21,44 @@ export async function processSearchQuery(query, documents = []) {
     .join('\n\n');
 
   const prompt = `You are a direct Q&A engine for a health app. Your task is to answer the user's question factually and concisely based *only* on the provided document context. 
-    
-**Formatting Rules:**
-- Structure your answer clearly. Use markdown lists (e.g., "- Item: value") for test results or medications.
-- Use bolding for emphasis on key terms (e.g., "**White Blood Cells (WBC):**").
-- Do NOT use any conversational filler, greetings, or sign-offs (e.g., no "Hello there!", no "Please remember..."). Just provide the factual answer.
-- If the answer is not in the documents, state that clearly.
 
 --- DOCUMENT CONTEXT ---
 ${documentContext}
 --- END DOCUMENT CONTEXT ---
 
-**Question:** "${query}"
+**User Question:** "${query}"
 
-**Factual Answer:**`;
+**Instructions:**
+1.  **Find the Exact Answer:** Locate the specific information within the document context that answers the user's question.
+2.  **Cite Your Sources:** Identify the specific document(s) that contain the answer.
+3.  **Format the Output:** Return a JSON object with the fields "answer", "referencedDocuments", and "suggestedFollowUps". The referencedDocuments should be an array of the full document objects.
+
+**JSON Response:**`;
 
   try {
     const response = await ai.models.generateContent({
       model,
       contents: { parts: [{ text: prompt }] }
     });
-    const answerText = response.text;
+    try {
+      // Extract JSON from markdown code block if present
+      const jsonRegex = /```json\n([\s\S]*?)\n```/;
+      const match = response.text.match(jsonRegex);
+      const jsonString = match ? match[1] : response.text;
 
-    // Return answer with source documents
-    // In a more sophisticated implementation, we could identify which specific documents were used
-    return {
-      answer: answerText,
-      sources: documents.slice(0, 3).map(doc => ({
-        id: doc.id,
-        title: doc.title,
-        category: doc.category
-      }))
-    };
+      const jsonResponse = JSON.parse(jsonString);
+      return jsonResponse;
+    } catch (e) {
+      console.error('Error parsing AI answer JSON:', e);
+      console.error('AI Response Text:', response.text);
+      throw new Error('Failed to parse AI answer response.');
+    }
   } catch (error) {
-    console.error('Search query processing failed:', error);
-    throw new Error('Failed to process search query: ' + error.message);
+    console.error('AI answer generation failed:', error);
+    throw new Error('Failed to generate AI answer: ' + error.message);
   }
 }
+
 
 export async function getAISummary(query, documents = []) {
   const documentContext = documents

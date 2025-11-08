@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { Storage } from '@google-cloud/storage';
-import { getAISummary, processSearchQuery } from '../services/gemini/searchService.js';
+import { getAISummary, getAIAnswer } from '../services/gemini/searchService.js';
 import { analyzeQuery } from '../services/queryAnalyzer.js';
 import { Firestore, FieldValue } from '@google-cloud/firestore';
 
@@ -113,7 +113,12 @@ router.post('/search', async (req, res) => {
         const summaryResult = await getAISummary(query, documents);
         return res.json({ type: 'summary', query, ...summaryResult });
       }
-      case 'answer':
+      case 'answer': {
+        const documentsSnapshot = await firestore.collection('documents').where('userId', '==', uid).get();
+        const documents = documentsSnapshot.docs.map(doc => doc.data());
+        const answerResult = await getAIAnswer(query, documents);
+        return res.json({ type: 'answer', query, ...answerResult });
+      }
       case 'chat':
         return res.status(501).json({ type, message: 'This search type is not implemented yet.' });
 

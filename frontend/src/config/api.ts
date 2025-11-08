@@ -3,6 +3,8 @@
  * Central configuration for backend API calls
  */
 
+import { auth } from './firebase';
+
 // Get API base URL from environment or use default
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -11,9 +13,19 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:30
  * @returns {Promise<string | null>}
  */
 export async function getAuthToken(): Promise<string | null> {
-  // TODO: Implement Firebase auth token retrieval
-  // For now, return null (will need to integrate with Firebase Auth)
-  return null;
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      return null;
+    }
+    
+    // Get the ID token, forcing refresh if it's expired
+    const token = await user.getIdToken(false);
+    return token;
+  } catch (error) {
+    console.error('Error getting auth token:', error);
+    return null;
+  }
 }
 
 /**

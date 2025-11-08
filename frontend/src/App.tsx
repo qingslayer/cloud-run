@@ -1,4 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { auth } from './config/firebase';
 import { DocumentFile, ChatMessage as ChatMessageType, DocumentCategory, Theme, View, UniversalSearchResult } from './types';
 import Dashboard from './components/Dashboard';
 import Records from './components/Records';
@@ -16,7 +18,8 @@ import { processUniversalSearch } from './services/searchService';
 
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [view, setView] = useState<View>('dashboard');
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([]);
@@ -32,6 +35,22 @@ const App: React.FC = () => {
   const [pageSearchResults, setPageSearchResults] = useState<UniversalSearchResult | null>(null);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Firebase auth state listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setIsAuthLoading(false);
+      
+      // Load sample documents for demo purposes when user logs in
+      if (user && documents.length === 0) {
+        setDocuments(sampleDocuments);
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
 
 
   useEffect(() => {
@@ -194,22 +213,44 @@ const App: React.FC = () => {
     setIsRightPanelOpen(true);
   };
 
-  const handleLogin = () => {
+  const handleLogin = (user: User) => {
+    // Auth state is managed by Firebase listener
+    // Load sample documents for the user
     setDocuments(sampleDocuments);
-    setIsAuthenticated(true);
   };
   
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setDocuments([]);
-    setChatMessages([]);
-    setView('dashboard');
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Clear application state
+      setDocuments([]);
+      setChatMessages([]);
+      setView('dashboard');
+      setIsRightPanelOpen(false);
+      setSelectedDocumentId(null);
+      setReviewingDocumentId(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const reviewingDocument = documents.find(doc => doc.id === reviewingDocumentId);
   const selectedDocument = documents.find(doc => doc.id === selectedDocumentId);
 
-  if (!isAuthenticated) {
+  // Show loading state while checking authentication
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-stone-50 dark:bg-[#0B1120]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto"></div>
+          <p className="mt-4 text-slate-600 dark:text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login if not authenticated
+  if (!currentUser) {
     return <Login onLogin={handleLogin} />;
   }
   

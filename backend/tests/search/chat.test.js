@@ -1,7 +1,6 @@
 import fetch from 'node-fetch';
-import { getIDToken } from './test-id-token.js';
-
-const API_BASE_URL = 'http://localhost:8080/api';
+import { getIDToken } from '../utils/id-token.test.js';
+import { API_SEARCH_URL } from '../utils/config.test.js';
 
 async function testChatSearch() {
   console.log('--- Running test: Chat Search ---');
@@ -9,7 +8,7 @@ async function testChatSearch() {
   const query = 'why is my cholesterol high?';
 
   try {
-    const response = await fetch(`${API_BASE_URL}/documents/search`, {
+    const response = await fetch(API_SEARCH_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${idToken}`,

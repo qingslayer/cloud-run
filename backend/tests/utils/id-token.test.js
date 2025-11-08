@@ -2,6 +2,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, connectAuthEmulator } from 'firebase/auth';
 import dotenv from 'dotenv';
+import { TEST_EMAIL, TEST_PASSWORD, AUTH_EMULATOR_URL } from './config.test.js';
 
 // Load environment variables
 dotenv.config();
@@ -18,17 +19,13 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 // Connect to the local authentication emulator
-connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
-
-// Test credentials for the emulator (hardcoded since they're local-only)
-const TEST_EMAIL = "test@example.com";
-const TEST_PASSWORD = "password123";
+connectAuthEmulator(auth, AUTH_EMULATOR_URL, { disableWarnings: true });
 
 export async function getIDToken() {
   try {
     console.log(`\n🔐 Attempting to sign in with ${TEST_EMAIL} using the Firebase Emulator...`);
     console.log(`📍 Project ID: ${firebaseConfig.projectId}`);
-    console.log(`🌐 Auth Emulator: http://localhost:9099\n`);
+    console.log(`🌐 Auth Emulator: ${AUTH_EMULATOR_URL}\n`);
     
     const userCredential = await signInWithEmailAndPassword(auth, TEST_EMAIL, TEST_PASSWORD);
     const idToken = await userCredential.user.getIdToken();

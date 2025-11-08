@@ -14,7 +14,7 @@ if (missingEnvVars.length > 0) {
 import { Storage } from '@google-cloud/storage';
 import { Firestore } from '@google-cloud/firestore';
 import { GoogleGenAI } from '@google/genai';
-import admin from './src/config/firebase.js';
+import admin from '../src/config/firebase.js';
 
 console.log('🧪 Testing GCP connections...\n');
 

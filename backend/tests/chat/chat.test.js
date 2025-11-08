@@ -1,7 +1,6 @@
 import fetch from 'node-fetch';
-import { getIDToken } from './test-id-token.js';
-
-const API_BASE_URL = 'http://localhost:8080/api';
+import { getIDToken } from '../utils/id-token.test.js';
+import { API_CHAT_URL } from '../utils/config.test.js';
 
 async function testChat() {
   console.log('--- Running test: Conversational Chat ---');
@@ -14,7 +13,7 @@ async function testChat() {
   console.log(`\n--- Sending message: "${message}" ---`);
 
   try {
-    let response = await fetch(`${API_BASE_URL}/chat`, {
+    let response = await fetch(API_CHAT_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${idToken}`,
@@ -48,7 +47,7 @@ async function testChat() {
   console.log(`\n--- Sending follow-up message: "${message}" ---`);
 
   try {
-    let response = await fetch(`${API_BASE_URL}/chat`, {
+    let response = await fetch(API_CHAT_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${idToken}`,

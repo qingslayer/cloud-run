@@ -102,7 +102,7 @@ gcloud firestore databases create --location=europe-west1
 
 4. Verify connections:
 ```bash
-   node test-connection.js
+   node tests/connection.test.js
 ```
    Should show ✅ for all four services.
 

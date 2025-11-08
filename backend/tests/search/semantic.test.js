@@ -1,7 +1,6 @@
 import fetch from 'node-fetch';
-import { getIDToken } from './test-id-token.js';
-
-const API_BASE_URL = 'http://localhost:8080/api';
+import { getIDToken } from '../utils/id-token.test.js';
+import { API_SEARCH_URL } from '../utils/config.test.js';
 
 async function testSemanticSearch() {
   console.log('--- Running test: Semantic Search (Summary) ---');
@@ -9,7 +8,7 @@ async function testSemanticSearch() {
   const query = 'blood pressure readings';
 
   try {
-    const response = await fetch(`${API_BASE_URL}/documents/search`, {
+    const response = await fetch(API_SEARCH_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${idToken}`,

@@ -33,14 +33,15 @@ The backend implementation will be approached in four phases:
         - `GET /api/documents/:id`: Retrieve a single document's metadata and a secure download URL.
         - `PATCH /api/documents/:id`: Edit a document's metadata (e.g., `displayName`, `category`, `notes`).
         - `DELETE /api/documents/:id`: Permanently delete a document from Cloud Storage and Firestore.
-    - **AI-Powered Features (Next)**:
-        - `/api/analyze`: Process uploaded documents using Gemini to generate a `displayName`, summarize content, and extract structured data.
-        - `/api/search`: Implement AI-powered document search.
-        - `/api/chat`: Implement conversational queries about documents.
-### 3. Code Refactoring for Scalability
--   **Strategy**: Proactively refactor API routes for better organization and maintainability.
-    -   Move the logic for each endpoint into its own file within the `backend/src/routes` directory (e.g., `documents.js`, `chat.js`, `analyze.js`).
+    - **AI-Powered Features (In Progress)**:
+        - `/api/documents/search`: A unified search endpoint that intelligently routes user queries.
+            -   **Simple Queries:** For simple queries (e.g., "show all prescriptions"), it performs a direct Firestore query without using AI.
+            -   **Semantic Queries:** For more complex queries (e.g., "blood pressure readings"), it uses AI to provide a summary of relevant documents.
+            -   **Q&A Queries:** For direct questions (e.g., "what were my cholesterol levels?"), it uses AI to provide a direct answer with citations.
+            -   **Chat Queries:** For conversational queries (e.g., "why is my cholesterol high?"), it initiates a new chat session.
+        - `/api/chat`: A dedicated endpoint for handling conversational follow-ups, using a `sessionId` to maintain context.
+        - `/api/documents/:id/analyze`: An endpoint to trigger the AI analysis of a specific document.
 
-### 4. Deployment with Cloud Run
+### 3. Deployment with Cloud Run
 -   **Strategy**: Use Cloud Run for a fully-managed, serverless deployment.
             -   Create a `Dockerfile` for the backend, push the container image to Google Artifact Registry, and deploy it to Cloud Run in the `europe-west1` region.

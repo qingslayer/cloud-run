@@ -1,22 +1,6 @@
 import fetch from 'node-fetch';
-import dotenv from 'dotenv';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, connectAuthEmulator } from 'firebase/auth';
-
-// Load environment variables
-dotenv.config();
-
-// Firebase config for getting token
-const firebaseConfig = {
-  apiKey: "demo-api-key",
-  authDomain: `${process.env.PROJECT_ID}.firebaseapp.com`,
-  projectId: process.env.PROJECT_ID,
-  storageBucket: `${process.env.PROJECT_ID}.appspot.com`,
-};
-
-const API_BASE_URL = 'http://localhost:8080/api/documents';
-const TEST_EMAIL = "test@example.com";
-const TEST_PASSWORD = "password123";
+import { getIDToken } from '../utils/id-token.test.js';
+import { API_DOCUMENTS_URL } from '../utils/config.test.js';
 
 // Get query parameters from command line
 const category = process.argv[2];
@@ -26,18 +10,10 @@ const offset = process.argv[4];
 async function testListDocuments() {
   try {
     // Step 1: Get fresh token from emulator
-    console.log('🔐 Getting fresh token from Firebase Emulator...');
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
-
-    const userCredential = await signInWithEmailAndPassword(auth, TEST_EMAIL, TEST_PASSWORD);
-    const idToken = await userCredential.user.getIdToken();
-
-    console.log(`✅ Token obtained (length: ${idToken.length})`);
+    const idToken = await getIDToken();
 
     // Step 2: Construct URL with query parameters
-    let url = API_BASE_URL;
+    let url = API_DOCUMENTS_URL;
     const queryParams = [];
     if (category) queryParams.push(`category=${category}`);
     if (limit) queryParams.push(`limit=${limit}`);

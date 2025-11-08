@@ -2,33 +2,21 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import FormData from 'form-data';
 import dotenv from 'dotenv';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, connectAuthEmulator } from 'firebase/auth';
 import path from 'path';
 import { Storage } from '@google-cloud/storage';
+import { getIDToken } from '../utils/id-token.test.js';
+import { API_DOCUMENTS_URL } from '../utils/config.test.js';
 
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), 'backend', '.env') });
-
-// Firebase config for getting token
-const firebaseConfig = {
-  apiKey: "demo-api-key",
-  authDomain: `${process.env.PROJECT_ID}.firebaseapp.com`,
-  projectId: process.env.PROJECT_ID,
-  storageBucket: `${process.env.PROJECT_ID}.appspot.com`,
-};
-
-const API_BASE_URL = 'http://localhost:8080/api/documents';
-const TEST_EMAIL = "test@example.com";
-const TEST_PASSWORD = "password123";
 
 // Get file path from command line
 const filePath = process.argv[2];
 
 async function testDeleteDocument() {
   if (!filePath) {
-    console.error('Usage: node tests/test-delete-document.js <path_to_file>');
-    console.error('Example: node tests/test-delete-document.js ~/Downloads/sample.png');
+    console.error('Usage: node tests/documents/delete-document.test.js <path_to_file>');
+    console.error('Example: node tests/documents/delete-document.test.js ~/Downloads/sample.png');
     process.exit(1);
   }
 
@@ -37,20 +25,12 @@ async function testDeleteDocument() {
     process.exit(1);
   }
 
-  let idToken;
   let documentId;
   let storagePath;
 
   try {
     // Step 1: Get fresh token from emulator
-    console.log('🔐 Getting fresh token from Firebase Emulator...');
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
-
-    const userCredential = await signInWithEmailAndPassword(auth, TEST_EMAIL, TEST_PASSWORD);
-    idToken = await userCredential.user.getIdToken();
-    console.log(`✅ Token obtained (length: ${idToken.length})`);
+    const idToken = await getIDToken();
 
     // Step 2: Upload a new file to get a document ID and storage path
     console.log(`\n📤 Uploading file to get a document ID: ${filePath}`);
@@ -59,7 +39,7 @@ async function testDeleteDocument() {
     form.append('category', 'test_delete_document');
     form.append('name', 'Test Delete Document from CLI');
 
-    const uploadResponse = await fetch(`${API_BASE_URL}/upload`, {
+    const uploadResponse = await fetch(`${API_DOCUMENTS_URL}/upload`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${idToken}`, ...form.getHeaders() },
       body: form,
@@ -74,7 +54,7 @@ async function testDeleteDocument() {
 
     // Step 3: Delete the document
     console.log(`\n🗑️ Deleting document with ID: ${documentId}`);
-    const deleteResponse = await fetch(`${API_BASE_URL}/${documentId}`, {
+    const deleteResponse = await fetch(`${API_DOCUMENTS_URL}/${documentId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${idToken}` },
     });
@@ -85,7 +65,7 @@ async function testDeleteDocument() {
 
     // Step 4: Verify document is deleted from Firestore
     console.log(`\n🔎 Verifying document ${documentId} is deleted from Firestore...`);
-    const verifyResponse = await fetch(`${API_BASE_URL}/${documentId}`, {
+    const verifyResponse = await fetch(`${API_DOCUMENTS_URL}/${documentId}`, {
       method: 'GET',
       headers: { 'Authorization': `Bearer ${idToken}` },
     });

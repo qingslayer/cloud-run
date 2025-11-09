@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DocumentFile } from '../types';
 import { XIcon } from './icons/XIcon';
+import { PlusIcon } from './icons/PlusIcon';
+import { MinusIcon } from './icons/MinusIcon';
 
 interface DocumentPreviewModalProps {
   document: DocumentFile;
@@ -8,6 +10,8 @@ interface DocumentPreviewModalProps {
 }
 
 const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({ document, onClose }) => {
+  const [zoomLevel, setZoomLevel] = useState(1);
+
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -34,13 +38,49 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({ document, o
             <h3 className="font-semibold text-slate-800 dark:text-slate-100 truncate">
               {document.displayName || document.filename}
             </h3>
-            <button
-                onClick={onClose}
-                className="p-1.5 rounded-full text-slate-400 dark:text-gray-500 bg-white/10 hover:bg-white/20 hover:text-red-500 transition-colors"
-                aria-label="Close document preview"
-            >
-                <XIcon className="h-5 w-5" />
-            </button>
+
+            <div className="flex items-center space-x-4">
+              {/* Zoom controls for images only */}
+              {document.fileType?.startsWith('image/') && (
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setZoomLevel(z => Math.max(0.5, z - 0.25))}
+                    disabled={zoomLevel <= 0.5}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Zoom out"
+                  >
+                    <MinusIcon className="w-4 h-4" />
+                  </button>
+                  <span className="text-sm text-slate-300 min-w-[4rem] text-center font-medium">
+                    {Math.round(zoomLevel * 100)}%
+                  </span>
+                  <button
+                    onClick={() => setZoomLevel(z => Math.min(3, z + 0.25))}
+                    disabled={zoomLevel >= 3}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Zoom in"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setZoomLevel(1)}
+                    disabled={zoomLevel === 1}
+                    className="px-2 py-1 rounded-lg text-sm text-slate-400 hover:text-slate-200 hover:bg-white/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label="Reset zoom"
+                  >
+                    Reset
+                  </button>
+                </div>
+              )}
+
+              <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-full text-slate-400 dark:text-gray-500 bg-white/10 hover:bg-white/20 hover:text-red-500 transition-colors"
+                  aria-label="Close document preview"
+              >
+                  <XIcon className="h-5 w-5" />
+              </button>
+            </div>
         </div>
         <div className="flex-grow mt-3 overflow-auto rounded-lg">
              {document.downloadUrl ? (
@@ -48,7 +88,11 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({ document, o
                   <img
                     src={document.downloadUrl}
                     alt={document.displayName || document.filename}
-                    className="max-h-full max-w-full mx-auto object-contain"
+                    className="mx-auto object-contain transition-transform duration-200"
+                    style={{
+                      transform: `scale(${zoomLevel})`,
+                      transformOrigin: 'center'
+                    }}
                   />
               ) : (
                   <embed

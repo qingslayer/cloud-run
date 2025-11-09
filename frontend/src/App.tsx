@@ -41,19 +41,18 @@ const App: React.FC = () => {
   const [pageSearchResults, setPageSearchResults] = useState<UniversalSearchResult | null>(null);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  // merge conflict
-  // const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
 
-  // // State for confirmation modals
-  // const [deleteConfirmation, setDeleteConfirmation] = useState<{
-  //   isOpen: boolean;
-  //   documentId?: string;
-  //   type: 'single' | 'all';
-  //   isDeleting: boolean;
-  // }>({ isOpen: false, type: 'single', isDeleting: false });
+  // State for confirmation modals
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    documentId?: string;
+    type: 'single' | 'all';
+    isDeleting: boolean;
+  }>({ isOpen: false, type: 'single', isDeleting: false });
 
-  // // State for upload modal
-  // const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  // State for upload modal
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // Firebase auth state listener
   useEffect(() => {
@@ -167,6 +166,12 @@ const App: React.FC = () => {
     try {
       await apiDeleteDocument(documentId);
       setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== documentId));
+
+      // Close detail view if this document was open
+      if (selectedDocumentId === documentId) {
+        handleCloseDocumentDetail();
+      }
+
       success("Document deleted successfully");
       setDeleteConfirmation({ isOpen: false, type: 'single', isDeleting: false });
     } catch (err) {
@@ -240,15 +245,9 @@ const App: React.FC = () => {
         setSelectedDocumentId(id);
         setReviewingDocumentId(null);
       }
-    // merge conflict
-    // } catch (error) {
-    //   console.error("Error fetching document:", error);
-
-    //   console.log('   - After setState - selectedDocumentIdRef:', selectedDocumentIdRef.current);
-    //   console.log('   - After setState - reviewingDocumentIdRef:', reviewingDocumentIdRef.current);
-    // } catch (err) {
-    //   console.error("❌ Error fetching document details:", err);
-    //   error("Failed to load document. Please try again.");
+    } catch (err) {
+      console.error("Error fetching document details:", err);
+      error("Failed to load document. Please try again.");
       // Clear refs on error so user can retry
       selectedDocumentDataRef.current = null;
       lastSelectedDocumentIdRef.current = null;
@@ -301,36 +300,32 @@ const App: React.FC = () => {
     setChatMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
-    // merge conflict
-    // try {
-    //     // Send message with chat history and sessionId to backend
-    //     const result = await sendChatMessage(message, chatMessages, chatSessionId || undefined);
+    try {
+      // Send message with chat history and sessionId to backend
+      const result = await sendChatMessage(message, chatMessages, chatSessionId || undefined);
 
-    //     // Store session ID for subsequent messages
-    //     setChatSessionId(result.sessionId);
-    //     // Send message with chat history to backend
-    //     const result = await sendChatMessage(message, chatMessages);
+      // Store session ID for subsequent messages
+      setChatSessionId(result.sessionId);
 
-    //     const aiMessage: ChatMessageType = {
-    //       id: (Date.now() + 1).toString(),
-    //       role: 'model',
-    //       text: result.answer
-    //       text: result.text
-    //     };
-    //     setChatMessages(prev => [...prev, aiMessage]);
-
+      const aiMessage: ChatMessageType = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        text: result.answer
+      };
+      setChatMessages(prev => [...prev, aiMessage]);
     } catch (err) {
-        console.error('Error in chat:', err);
-        const errorMessage: ChatMessageType = {
-            id: (Date.now() + 1).toString(),
-            role: 'model',
-            text: 'Sorry, I encountered an error. Please try again.',
-        };
-        setChatMessages(prev => [...prev, errorMessage]);
+      console.error('Error in chat:', err);
+      error('Failed to send message. Please try again.');
+      const errorMessage: ChatMessageType = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        text: 'Sorry, I encountered an error. Please try again.',
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-  }, [chatMessages]);
+  }, [chatMessages, chatSessionId, error]);
 
   const handleSearchSubmit = async (query: string) => {
     if (!query.trim()) return;
@@ -345,30 +340,24 @@ const App: React.FC = () => {
     setView('search');
 
     try {
-        // Backend handles AI vs simple search logic
-        const searchResult = await processUniversalSearch(query);
-        setPageSearchResults(searchResult);
-    // merge conflict
-    //     // If search opened a chat session, store the sessionId
-    //     if (searchResult.type === 'chat') {
-    //       setChatSessionId(searchResult.sessionId);
-    //     }
-    // } catch (error) {
-    //     console.error("Search failed:", error);
-    //     setPageSearchResults({
-    //       type: 'answer',
-    //       answer: 'Sorry, an error occurred during the search.',
-    //       referencedDocuments: []
-    // } catch (err) {
-    //     console.error("Search failed:", err);
-    //     error("Search failed. Please try again.");
-    //     setPageSearchResults({
-    //       type: 'answer',
-    //       answer: 'Sorry, an error occurred during the search.',
-    //       sources: []
-    //     });
+      // Backend handles AI vs simple search logic
+      const searchResult = await processUniversalSearch(query);
+      setPageSearchResults(searchResult);
+
+      // If search opened a chat session, store the sessionId
+      if (searchResult.type === 'chat') {
+        setChatSessionId(searchResult.sessionId);
+      }
+    } catch (err) {
+      console.error("Search failed:", err);
+      error("Search failed. Please try again.");
+      setPageSearchResults({
+        type: 'answer',
+        answer: 'Sorry, an error occurred during the search.',
+        referencedDocuments: []
+      });
     } finally {
-        setIsSearchLoading(false);
+      setIsSearchLoading(false);
     }
   };
 
@@ -389,21 +378,20 @@ const App: React.FC = () => {
       : pageSearchResults.answer;
 
     const initialHistory: ChatMessageType[] = [
-        { id: 'followup-0', role: 'user', text: searchQuery },
-        { id: 'followup-1', role: 'model', text: responseText },
+      { id: 'followup-0', role: 'user', text: searchQuery },
+      { id: 'followup-1', role: 'model', text: responseText },
     ];
 
     setChatMessages(initialHistory);
 
-  // merge conflict
-  //   // If this was a chat-type result, preserve the sessionId
-  //   if (pageSearchResults.type === 'chat') {
-  //     setChatSessionId(pageSearchResults.sessionId);
-  //   }
+    // If this was a chat-type result, preserve the sessionId
+    if (pageSearchResults.type === 'chat') {
+      setChatSessionId(pageSearchResults.sessionId);
+    }
 
-  //   setView('dashboard');
-  //   setIsRightPanelOpen(true);
-  // };
+    setView('dashboard');
+    setIsRightPanelOpen(true);
+  };
 
   const handleLogout = async () => {
     try {
@@ -435,7 +423,7 @@ const App: React.FC = () => {
   }
 
   if (selectedDocument) {
-    return <DocumentDetailView document={selectedDocument} onClose={handleCloseDocumentDetail} onUpdate={handleUpdateDocument} />;
+    return <DocumentDetailView document={selectedDocument} onClose={handleCloseDocumentDetail} onUpdate={handleUpdateDocument} onDelete={handleRequestDeleteDocument} />;
   }
 
   const renderMainContent = () => {

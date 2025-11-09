@@ -16,6 +16,7 @@ interface RecordsProps {
   onRemoveMultipleDocuments: (ids: string[]) => void;
   onSelectDocument: (id: string) => void;
   initialFilter: DocumentCategory | 'all';
+  onError?: (message: string) => void;
 }
 
 const categories: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
@@ -33,19 +34,21 @@ const FilterPill: React.FC<{ label: string; isActive: boolean; onClick: () => vo
     </button>
 );
 
-const Records: React.FC<RecordsProps> = ({ 
-    documents, 
-    onFilesChange, 
-    onUpdateDocument, 
-    onRemoveDocument, 
-    onRemoveMultipleDocuments, 
-    onSelectDocument, 
-    initialFilter, 
+const Records: React.FC<RecordsProps> = ({
+    documents,
+    onFilesChange,
+    onUpdateDocument,
+    onRemoveDocument,
+    onRemoveMultipleDocuments,
+    onSelectDocument,
+    initialFilter,
+    onError,
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState(initialFilter);
     const [sortBy, setSortBy] = useState('date_desc');
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [dateFilter, setDateFilter] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
     useEffect(() => {
         setFilterType(initialFilter);
@@ -53,20 +56,44 @@ const Records: React.FC<RecordsProps> = ({
 
     const sortedAndFilteredDocuments = useMemo(() => {
         const lowercasedSearchTerm = searchTerm.toLowerCase();
+        const now = new Date();
+
         const filtered = documents.filter(doc => {
+            // Search filter
             const matchesSearch =
                 (doc.displayName || '').toLowerCase().includes(lowercasedSearchTerm) ||
                 (doc.aiAnalysis?.searchSummary || '').toLowerCase().includes(lowercasedSearchTerm) ||
                 (doc.aiAnalysis?.structuredData && Object.values(doc.aiAnalysis.structuredData).some(value =>
                     String(value).toLowerCase().includes(lowercasedSearchTerm)
                 ));
-            
-            let matchesFilter = true;
+
+            // Category filter
+            let matchesCategory = true;
             if (filterType !== 'all') {
-                matchesFilter = doc.category === filterType;
+                matchesCategory = doc.category === filterType;
             }
 
-            return matchesSearch && matchesFilter;
+            // Date filter
+            let matchesDate = true;
+            if (dateFilter !== 'all') {
+                const docDate = new Date(doc.uploadDate);
+                const diffTime = now.getTime() - docDate.getTime();
+                const diffDays = diffTime / (1000 * 3600 * 24);
+
+                switch (dateFilter) {
+                    case 'week':
+                        matchesDate = diffDays <= 7;
+                        break;
+                    case 'month':
+                        matchesDate = diffDays <= 30;
+                        break;
+                    case 'year':
+                        matchesDate = diffDays <= 365;
+                        break;
+                }
+            }
+
+            return matchesSearch && matchesCategory && matchesDate;
         });
 
         return filtered.sort((a, b) => {
@@ -82,9 +109,9 @@ const Records: React.FC<RecordsProps> = ({
                     return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
             }
         });
-    }, [documents, searchTerm, filterType, sortBy]);
+    }, [documents, searchTerm, filterType, dateFilter, sortBy]);
 
-    const groupedDocuments = useMemo(() => groupDocumentsByMonth(sortedAndFilteredDocuments), [sortedAndFilteredDocuments]);
+    const groupedDocuments = useMemo<{ [key: string]: DocumentFile[] }>(() => groupDocumentsByMonth(sortedAndFilteredDocuments), [sortedAndFilteredDocuments]);
     
     const filterOptions = [ { label: 'All', value: 'all' }, ...categories.map(c => ({ label: c, value: c })) ];
 
@@ -105,7 +132,7 @@ const Records: React.FC<RecordsProps> = ({
                 </div>
 
                 {/* Controls Panel */}
-                <div className="p-3 mb-6 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm space-y-3 sticky top-28 z-30">
+                <div className="p-4 mb-6 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm space-y-4 sticky top-28 z-30">
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                         <div className="relative w-full sm:flex-1">
                             <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 z-10" />
@@ -128,8 +155,24 @@ const Records: React.FC<RecordsProps> = ({
                             <option value="name_desc">Name: Z-A</option>
                         </select>
                     </div>
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-2 px-2">
-                         {filterOptions.map(opt => <FilterPill key={opt.value} label={opt.label} isActive={filterType === opt.value} onClick={() => setFilterType(opt.value as DocumentCategory | 'all')} /> )}
+
+                    {/* Category filters */}
+                    <div>
+                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2 block">Category:</span>
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                            {filterOptions.map(opt => <FilterPill key={opt.value} label={opt.label} isActive={filterType === opt.value} onClick={() => setFilterType(opt.value as DocumentCategory | 'all')} /> )}
+                        </div>
+                    </div>
+
+                    {/* Date filters */}
+                    <div>
+                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2 block">Time Period:</span>
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                            <FilterPill label="All Time" isActive={dateFilter === 'all'} onClick={() => setDateFilter('all')} />
+                            <FilterPill label="Past Week" isActive={dateFilter === 'week'} onClick={() => setDateFilter('week')} />
+                            <FilterPill label="Past Month" isActive={dateFilter === 'month'} onClick={() => setDateFilter('month')} />
+                            <FilterPill label="Past Year" isActive={dateFilter === 'year'} onClick={() => setDateFilter('year')} />
+                        </div>
                     </div>
                 </div>
                 
@@ -137,7 +180,7 @@ const Records: React.FC<RecordsProps> = ({
                 <div className="space-y-6">
                     {documents.length > 0 ? (
                         Object.keys(groupedDocuments).length > 0 ? (
-                            Object.entries(groupedDocuments).map(([monthYear, docs]) => (
+                            Object.entries(groupedDocuments).map(([monthYear, docs]: [string, DocumentFile[]]) => (
                                 <div key={monthYear} className="relative">
                                     <div className="sticky top-[188px] z-20 py-1 bg-stone-50/80 dark:bg-[#0B1120]/80 backdrop-blur-sm">
                                         <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400">{monthYear}</h2>
@@ -172,11 +215,12 @@ const Records: React.FC<RecordsProps> = ({
             </div>
         </div>
         
-        <UploadModal 
+        <UploadModal
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
             onFilesChange={onFilesChange}
             onUpdateDocument={onUpdateDocument}
+            onError={onError}
         />
         </>
     );

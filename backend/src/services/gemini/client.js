@@ -14,8 +14,8 @@ export const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY 
 });
 
-// Model to use
-export const model = 'gemini-2.0-flash-exp';
+// Model to use - Gemini 2.5 Flash (stable, optimized for speed and quality)
+export const model = 'gemini-2.5-flash';
 
 /**
  * Health check for Gemini API

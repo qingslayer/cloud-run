@@ -114,7 +114,7 @@ cp .env.example .env
 
 Edit `.env` and set:
 - `GEMINI_API_KEY` - Get from [Google AI Studio](https://aistudio.google.com/app/apikey)
-- `PROJECT_ID` - Your Google Cloud project ID
+- `GOOGLE_CLOUD_PROJECT` - Your Google Cloud project ID
 - `STORAGE_BUCKET` - Your Cloud Storage bucket name (e.g., `healthvault-YOUR-PROJECT-ID`)
 
 **4. Verify connections:**

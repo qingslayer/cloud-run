@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Check for required environment variables
-const requiredEnvVars = ['GEMINI_API_KEY', 'PROJECT_ID'];
+const requiredEnvVars = ['GEMINI_API_KEY', 'GOOGLE_CLOUD_PROJECT'];
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
 if (missingEnvVars.length > 0) {
@@ -36,7 +36,7 @@ try {
 // Test Cloud Storage
 console.log('Testing Cloud Storage...');
 try {
-  const storage = new Storage({ projectId: process.env.PROJECT_ID });
+  const storage = new Storage({ projectId: process.env.GOOGLE_CLOUD_PROJECT });
   const [buckets] = await storage.getBuckets();
   console.log('✅ Cloud Storage connected');
   console.log(`   Found ${buckets.length} bucket(s):`);
@@ -49,7 +49,7 @@ try {
 // Test Firestore
 console.log('Testing Firestore...');
 try {
-  const firestore = new Firestore({ projectId: process.env.PROJECT_ID });
+  const firestore = new Firestore({ projectId: process.env.GOOGLE_CLOUD_PROJECT });
   await firestore.collection('_test').limit(1).get();
   console.log('✅ Firestore connected\n');
 } catch (error) {

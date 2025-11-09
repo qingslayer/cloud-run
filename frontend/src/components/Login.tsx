@@ -6,10 +6,6 @@ import { HealthVaultLogo } from './icons/HealthVaultLogo';
 import { WelcomeIllustration } from './illustrations/WelcomeIllustration';
 import { LockClosedIcon } from './icons/LockClosedIcon';
 
-interface LoginProps {
-  onLogin: (user: any) => void;
-}
-
 // Demo account credentials
 const DEMO_EMAIL = 'qhhou3+healthvault@gmail.com';
 const DEMO_PASSWORD = 'GCloudRun2025!#';
@@ -24,7 +20,7 @@ const GoogleIcon = () => (
 );
 
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
@@ -36,11 +32,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(null);
     
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      
-      // Call the onLogin callback with the user object
-      onLogin(user);
+      await signInWithPopup(auth, googleProvider);
+      // Firebase onAuthStateChanged will handle the rest
     } catch (error: any) {
       console.error('Error signing in with Google:', error);
       setError(error.message || 'Failed to sign in with Google. Please try again.');
@@ -61,11 +54,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError(null);
     
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const user = result.user;
-      
-      // Call the onLogin callback with the user object
-      onLogin(user);
+      await signInWithEmailAndPassword(auth, email, password);
+      // Firebase onAuthStateChanged will handle the rest
     } catch (error: any) {
       console.error('Error signing in with email/password:', error);
       
@@ -95,11 +85,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     
     try {
       // Sign in with real Firebase credentials
-      const result = await signInWithEmailAndPassword(auth, DEMO_EMAIL, DEMO_PASSWORD);
-      const user = result.user;
-      
-      // Call the onLogin callback with the user object
-      onLogin(user);
+      await signInWithEmailAndPassword(auth, DEMO_EMAIL, DEMO_PASSWORD);
+      // Firebase onAuthStateChanged will handle the rest
     } catch (error: any) {
       console.error('Error signing in with demo account:', error);
       

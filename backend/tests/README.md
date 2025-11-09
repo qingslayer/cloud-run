@@ -330,7 +330,7 @@ node tests/search/chat.test.js
 
 **Problem**: Tests fail with authentication errors
 - **Solution**: Run `utils/id-token.test.js` first to verify auth setup
-- **Solution**: Check that `.env` file has correct `PROJECT_ID`
+- **Solution**: Check that `.env` file has correct `GOOGLE_CLOUD_PROJECT`
 
 ---
 

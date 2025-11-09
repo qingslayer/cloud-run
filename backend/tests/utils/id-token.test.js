@@ -9,9 +9,9 @@ dotenv.config();
 
 const firebaseConfig = {
   apiKey: "demo-api-key", // Emulator doesn't validate this
-  authDomain: `${process.env.PROJECT_ID}.firebaseapp.com`,
-  projectId: process.env.PROJECT_ID,
-  storageBucket: `${process.env.PROJECT_ID}.appspot.com`,
+  authDomain: `${process.env.GOOGLE_CLOUD_PROJECT}.firebaseapp.com`,
+  projectId: process.env.GOOGLE_CLOUD_PROJECT,
+  storageBucket: `${process.env.GOOGLE_CLOUD_PROJECT}.appspot.com`,
 };
 
 // Initialize Firebase

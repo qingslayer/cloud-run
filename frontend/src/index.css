@@ -1,9 +1,8 @@
-/* Base styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* Tailwind CSS v4 - Using Vite plugin */
+@import "tailwindcss";
+
+/* Custom base styles - Tailwind's Preflight already resets margins/padding */
+/* DO NOT add * { margin: 0; padding: 0 } - it breaks Tailwind spacing! */
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

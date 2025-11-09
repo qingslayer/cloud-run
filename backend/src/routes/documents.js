@@ -116,7 +116,16 @@ router.post('/search', async (req, res) => {
       let filtered = applyTimeFilter(docs);
       console.log(`  After time filter: ${filtered.length} documents`);
 
-      // Then apply keyword filter if keywords exist
+      // For AI queries, skip keyword filtering if category is already identified
+      // The AI is smart enough to determine relevance from category-filtered documents
+      // Keyword filtering can be too strict (e.g., "appointment" vs "visit summary")
+      if (category) {
+        console.log(`  Category already identified ('${category}'), skipping keyword filter for AI processing`);
+        return filtered;
+      }
+
+      // Only apply keyword filter if no category and keywords exist
+      // This helps narrow down documents when category wasn't identified
       if (keywords && keywords.length > 0) {
         const beforeKeywordFilter = filtered.length;
         filtered = filtered.filter(doc => {
@@ -158,10 +167,39 @@ router.post('/search', async (req, res) => {
         const snapshot = await firestoreQuery.get();
         let documents = snapshot.docs.map(doc => doc.data());
 
-        // For direct document queries, only apply time filter (category is already filtered by Firestore)
-        documents = applyTimeFilter(documents);
+        console.log(`  Starting with ${documents.length} documents from Firestore`);
 
-        console.log(`Simple search for category '${category}' returned ${documents.length} documents after filtering. No AI was used.`);
+        // Apply time filter
+        documents = applyTimeFilter(documents);
+        console.log(`  After time filter: ${documents.length} documents`);
+
+        // Apply keyword filter if keywords exist (with medical terminology synonym expansion)
+        if (keywords && keywords.length > 0) {
+          const beforeKeywordFilter = documents.length;
+          documents = documents.filter(doc => {
+            const a = doc.aiAnalysis || {};
+
+            // Build searchable text from metadata, summary, and structured data
+            const searchableText = [
+              doc.filename?.toLowerCase() || '',
+              doc.displayName?.toLowerCase() || '',
+              doc.category?.toLowerCase() || '',
+              doc.notes?.toLowerCase() || '',
+              a.searchSummary?.toLowerCase() || '',
+              JSON.stringify(a.structuredData || {}).toLowerCase(),
+            ].join(' ');
+
+            // Each keyword group must have at least one match (OR logic within groups)
+            const allGroupsMatch = keywords.every(group =>
+              group.some(term => searchableText.includes(term.toLowerCase()))
+            );
+
+            return allGroupsMatch;
+          });
+          console.log(`  After keyword filter: ${documents.length} documents (filtered out ${beforeKeywordFilter - documents.length})`);
+        }
+
+        console.log(`Document search for "${query}" returned ${documents.length} documents. No AI was used.`);
 
         return res.json({
           type: 'documents',
@@ -186,7 +224,7 @@ router.post('/search', async (req, res) => {
         const documentsSnapshot = await firestoreQuery.get();
         let documents = documentsSnapshot.docs.map(doc => doc.data());
 
-        // For AI queries, apply both time and keyword filters to narrow down context
+        // For AI queries, apply time filter (and keyword filter only if no category identified)
         documents = filterDocumentsForAI(documents);
 
         const summaryResult = await getAISummary(query, documents);
@@ -204,7 +242,7 @@ router.post('/search', async (req, res) => {
         const documentsSnapshot = await firestoreQuery.get();
         let documents = documentsSnapshot.docs.map(doc => doc.data());
 
-        // For AI queries, apply both time and keyword filters to narrow down context
+        // For AI queries, apply time filter (and keyword filter only if no category identified)
         documents = filterDocumentsForAI(documents);
 
         const answerResult = await getAIAnswer(query, documents);

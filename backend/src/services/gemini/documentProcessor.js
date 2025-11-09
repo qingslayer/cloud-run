@@ -61,7 +61,7 @@ export async function analyzeAndCategorizeDocument(text) {
 Categories: ${DOCUMENT_CATEGORIES.join(', ')}
 
 --- DOCUMENT TEXT ---
-${text.substring(0, 4000)}
+${text.substring(0, 10000)}
 --- END DOCUMENT TEXT ---
 
 Respond with a JSON object containing "title" and "category". The title should be descriptive and include relevant dates if found (e.g., "Complete Blood Count - Mar 15, 2024"). The category must be one of the exact strings from the list provided.`;
@@ -316,8 +316,8 @@ export async function generateSearchSummary(extractedText, category, structuredD
 **Structured Data:**
 ${structuredContext}
 
-**Full Text (first 3000 chars):**
-${extractedText.substring(0, 3000)}
+**Full Text (first 8000 chars):**
+${extractedText.substring(0, 8000)}
 
 **Your Task:**
 Create a 200-500 character summary that includes:

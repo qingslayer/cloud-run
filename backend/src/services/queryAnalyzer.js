@@ -1,3 +1,5 @@
+import { MEDICAL_SYNONYM_MAP } from './gemini/medicalTerminology.js';
+
 const ACTION_WORDS = ['show', 'list', 'find', 'get', 'display', 'give me'];
 const CATEGORY_WORDS = {
   'lab-result': ['lab', 'labs', 'blood work', 'blood test', 'test result'],
@@ -8,20 +10,6 @@ const CATEGORY_WORDS = {
   'other': ['document', 'file', 'record'],
 };
 const QUESTION_WORDS = ['what', 'when', 'where', 'who', 'why', 'how', 'should', 'explain'];
-
-// Medical terminology synonym map - helps match user queries to document content
-const SYNONYM_MAP = {
-  "blood work": ["complete blood count", "cbc", "blood test", "hemogram"],
-  "blood test": ["complete blood count", "cbc", "blood work", "hemogram"],
-  "cholesterol": ["lipid panel", "cholesterol test", "lipids", "ldl", "hdl"],
-  "xray": ["x-ray", "radiograph", "imaging report", "radiology"],
-  "x-ray": ["xray", "radiograph", "imaging report", "radiology"],
-  "mri": ["magnetic resonance imaging", "mri scan", "imaging"],
-  "ct scan": ["computed tomography", "cat scan", "ct", "imaging"],
-  "prescription": ["medication", "meds", "rx", "drug", "drugs", "medicine"],
-  "medication": ["prescription", "meds", "rx", "drug", "drugs", "medicine"],
-  "checkup": ["physical", "exam", "doctor visit", "annual", "appointment"],
-};
 
 // Map internal category names to Firestore document categories
 const CATEGORY_MAP = {
@@ -94,11 +82,11 @@ function extractKeywords(query) {
   });
 
   // Sort synonym keys by length (longest first) to match phrases before individual words
-  const sortedSynonymKeys = Object.keys(SYNONYM_MAP).sort((a, b) => b.length - a.length);
+  const sortedSynonymKeys = Object.keys(MEDICAL_SYNONYM_MAP).sort((a, b) => b.length - a.length);
 
   sortedSynonymKeys.forEach(key => {
     if (remainingQuery.includes(key)) {
-      keywordGroups.push([key, ...SYNONYM_MAP[key]]);
+      keywordGroups.push([key, ...MEDICAL_SYNONYM_MAP[key]]);
       remainingQuery = remainingQuery.replace(new RegExp(key, 'g'), ' ');
     }
   });

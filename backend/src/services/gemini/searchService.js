@@ -1,4 +1,5 @@
 import { ai, model } from './client.js';
+import { MEDICAL_TERMINOLOGY_GUIDE } from './medicalTerminology.js';
 
 /**
  * Search Service
@@ -46,45 +47,11 @@ ${structuredDataStr ? '\nDetailed Values:\n' + structuredDataStr : ''}
    - NEVER add your own medical context, significance, implications, or interpretations
    - NEVER provide unsolicited trends, patterns, or insights unless explicitly asked
 
+${MEDICAL_TERMINOLOGY_GUIDE}
+
 --- DOCUMENT CONTEXT ---
 ${documentContext}
 --- END DOCUMENT CONTEXT ---
-
---- MEDICAL TERMINOLOGY GUIDE ---
-When interpreting user queries, be aware of these common medical term synonyms:
-
-**Lab Tests:**
-- "blood work", "blood test", "labs" = CBC, CMP, BMP, Complete Blood Count, metabolic panel, hemogram
-- "cholesterol" = lipid panel, LDL, HDL, triglycerides, lipids
-- "blood sugar", "sugar test" = glucose, A1C, HbA1c, fasting glucose
-- "thyroid test" = TSH, T3, T4, thyroid panel
-- "liver test", "liver function" = LFT, ALT, AST, bilirubin
-- "kidney test", "kidney function" = creatinine, BUN, GFR, renal panel
-
-**Imaging:**
-- "x-ray", "xray" = radiograph, radiology report
-- "MRI" = magnetic resonance imaging
-- "CT scan", "CAT scan" = computed tomography
-- "ultrasound" = sonography, US
-- "mammogram" = breast imaging
-
-**Medications:**
-- "prescription", "medication", "meds", "drugs" = Rx, medicine
-- "blood pressure med", "BP med" = antihypertensive, ACE inhibitor, beta blocker
-- "diabetes med" = metformin, insulin, antidiabetic
-- "statin" = cholesterol medication, atorvastatin, simvastatin
-
-**Visits & Procedures:**
-- "checkup", "physical" = physical exam, doctor visit, annual exam, wellness visit
-- "shot", "vaccine", "immunization" = vaccination, inoculation
-- "operation", "surgery" = surgical procedure, operative report
-
-**Specialties:**
-- "heart doctor" = cardiologist
-- "bone doctor" = orthopedist, orthopedic surgeon
-- "skin doctor" = dermatologist
-- "cancer doctor" = oncologist
---- END TERMINOLOGY GUIDE ---
 
 **User Question:** "${query}"
 
@@ -184,45 +151,11 @@ ${structuredDataStr ? '\nDetailed Values:\n' + structuredDataStr : ''}
    - NEVER add your own medical context, significance, implications, or interpretations
    - NEVER provide unsolicited trends, patterns, or insights unless explicitly asked
 
+${MEDICAL_TERMINOLOGY_GUIDE}
+
 --- DOCUMENT CONTEXT ---
 ${documentContext}
 --- END DOCUMENT CONTEXT ---
-
---- MEDICAL TERMINOLOGY GUIDE ---
-When interpreting user queries, be aware of these common medical term synonyms:
-
-**Lab Tests:**
-- "blood work", "blood test", "labs" = CBC, CMP, BMP, Complete Blood Count, metabolic panel, hemogram
-- "cholesterol" = lipid panel, LDL, HDL, triglycerides, lipids
-- "blood sugar", "sugar test" = glucose, A1C, HbA1c, fasting glucose
-- "thyroid test" = TSH, T3, T4, thyroid panel
-- "liver test", "liver function" = LFT, ALT, AST, bilirubin
-- "kidney test", "kidney function" = creatinine, BUN, GFR, renal panel
-
-**Imaging:**
-- "x-ray", "xray" = radiograph, radiology report
-- "MRI" = magnetic resonance imaging
-- "CT scan", "CAT scan" = computed tomography
-- "ultrasound" = sonography, US
-- "mammogram" = breast imaging
-
-**Medications:**
-- "prescription", "medication", "meds", "drugs" = Rx, medicine
-- "blood pressure med", "BP med" = antihypertensive, ACE inhibitor, beta blocker
-- "diabetes med" = metformin, insulin, antidiabetic
-- "statin" = cholesterol medication, atorvastatin, simvastatin
-
-**Visits & Procedures:**
-- "checkup", "physical" = physical exam, doctor visit, annual exam, wellness visit
-- "shot", "vaccine", "immunization" = vaccination, inoculation
-- "operation", "surgery" = surgical procedure, operative report
-
-**Specialties:**
-- "heart doctor" = cardiologist
-- "bone doctor" = orthopedist, orthopedic surgeon
-- "skin doctor" = dermatologist
-- "cancer doctor" = oncologist
---- END TERMINOLOGY GUIDE ---
 
 **User Query:** "${query}"
 

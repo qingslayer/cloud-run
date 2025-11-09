@@ -324,21 +324,26 @@ Create a 200-500 character summary that includes:
 1. Document type and date (if available)
 2. Provider/facility (if available)
 3. Key medical findings, values, or information
-4. Any abnormalities or concerns
-5. Overall conclusion/impression
+4. All findings (both normal and abnormal values)
+5. Overall conclusion/impression if stated in the document
 
 **Format Guidelines:**
 - Be concise but information-dense
 - Use natural language (not bullet points)
 - Include specific medical values when relevant
-- Mention normal vs abnormal results
+- Present all findings factually without interpretation or emphasis
+- Do NOT add prefixes like ⚠️ or labels like "HIGH" unless they appear in the original document
+- Include what the document states about normal vs abnormal results
 - Make it easy for AI to answer questions like "what's my cholesterol?" or "when was my last checkup?"
 
 **Example for Lab Results:**
-"Complete Blood Count from October 15, 2023 at LabCorp by Dr. Smith. WBC 7.2 (normal), RBC 4.8 (normal), Hemoglobin 14.2 g/dL (normal), Platelets 245k (normal). All values within normal reference ranges. No abnormalities detected. Patient shows healthy blood profile with no concerns."
+"Complete Blood Count from October 15, 2023 at LabCorp by Dr. Smith. WBC 7.2, RBC 4.8, Hemoglobin 14.2 g/dL, Platelets 245k. All values within normal reference ranges. No abnormalities detected."
 
 **Example for Prescription:**
-"Prescription from Dr. Johnson dated March 3, 2024. Lisinopril 10mg once daily for blood pressure management. Metformin 500mg twice daily with meals for diabetes control. 30-day supply with 2 refills available. Take Metformin with food to reduce side effects."
+"Prescription from Dr. Johnson dated March 3, 2024. Lisinopril 10mg once daily for blood pressure management. Metformin 500mg twice daily with meals for diabetes control. 30-day supply with 2 refills available."
+
+**Example for Lab Results with Abnormalities (as stated in document):**
+"Lipid Panel from January 12, 2024 at CardioClinic by Dr. Martinez. Total cholesterol 245 mg/dL (reference <200), LDL 160 mg/dL (reference <100), HDL 45 mg/dL (reference >40), Triglycerides 200 mg/dL (reference <150). Doctor noted elevated cardiovascular risk."
 
 Now create the summary:`;
 

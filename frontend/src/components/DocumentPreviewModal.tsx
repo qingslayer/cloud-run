@@ -31,7 +31,9 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({ document, o
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex-shrink-0 flex items-center justify-between pb-3 border-b border-white/10">
-            <h3 className="font-semibold text-slate-800 dark:text-slate-100 truncate">{document.name}</h3>
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+              {document.displayName || document.filename}
+            </h3>
             <button
                 onClick={onClose}
                 className="p-1.5 rounded-full text-slate-400 dark:text-gray-500 bg-white/10 hover:bg-white/20 hover:text-red-500 transition-colors"
@@ -42,10 +44,18 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({ document, o
         </div>
         <div className="flex-grow mt-3 overflow-auto rounded-lg">
              {document.downloadUrl ? (
-                document.type.startsWith('image/') ? (
-                  <img src={document.downloadUrl} alt={document.name} className="max-h-full max-w-full mx-auto object-contain" />
+                document.fileType?.startsWith('image/') ? (
+                  <img
+                    src={document.downloadUrl}
+                    alt={document.displayName || document.filename}
+                    className="max-h-full max-w-full mx-auto object-contain"
+                  />
               ) : (
-                  <embed src={document.downloadUrl} type="application/pdf" className="w-full h-full" />
+                  <embed
+                    src={document.downloadUrl}
+                    type={document.fileType || 'application/pdf'}
+                    className="w-full h-full"
+                  />
               )
              ) : (
                 <div className="flex items-center justify-center h-full">

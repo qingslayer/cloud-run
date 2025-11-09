@@ -10,20 +10,27 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:30
 
 /**
  * Get Firebase ID token for authenticated requests
+ * @param forceRefresh - Force token refresh (default: false)
  * @returns {Promise<string | null>}
  */
-export async function getAuthToken(): Promise<string | null> {
+export async function getAuthToken(forceRefresh: boolean = false): Promise<string | null> {
   try {
     const user = auth.currentUser;
     if (!user) {
-      console.warn('No authenticated user found when getting auth token');
+      if (import.meta.env.DEV) {
+        console.warn('No authenticated user found when getting auth token');
+      }
       return null;
     }
-    
-    // Get the ID token, forcing refresh to ensure it's valid
-    // Setting forceRefresh=true ensures we always get a fresh, valid token
-    const token = await user.getIdToken(true);
-    console.log('Got auth token for user:', user.email);
+
+    // Get the ID token from cache unless forceRefresh is requested
+    // Cached tokens are valid for 1 hour and automatically refreshed by Firebase
+    const token = await user.getIdToken(forceRefresh);
+
+    if (import.meta.env.DEV) {
+      console.log('Got auth token for user:', user.email, forceRefresh ? '(forced refresh)' : '(cached)');
+    }
+
     return token;
   } catch (error) {
     console.error('Error getting auth token:', error);
@@ -41,8 +48,9 @@ export async function apiRequest(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<Response> {
-  const token = await getAuthToken();
-  
+  // First attempt with cached token
+  let token = await getAuthToken(false);
+
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -53,11 +61,29 @@ export async function apiRequest(
   }
 
   const url = `${API_BASE_URL}${endpoint}`;
-  
-  const response = await fetch(url, {
+
+  let response = await fetch(url, {
     ...options,
     headers,
   });
+
+  // If we get 401 Unauthorized, try once more with a fresh token
+  if (response.status === 401) {
+    if (import.meta.env.DEV) {
+      console.log('Got 401, retrying with fresh token...');
+    }
+
+    token = await getAuthToken(true); // Force refresh
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    response = await fetch(url, {
+      ...options,
+      headers,
+    });
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -79,7 +105,8 @@ export async function apiFormRequest(
   formData: FormData,
   options: RequestInit = {}
 ): Promise<Response> {
-  const token = await getAuthToken();
+  // First attempt with cached token
+  let token = await getAuthToken(false);
 
   const headers: HeadersInit = {
     ...options.headers,
@@ -95,12 +122,32 @@ export async function apiFormRequest(
 
   const url = `${API_BASE_URL}${endpoint}`;
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     ...options,
     method: 'POST', // FormData requests are typically POST
     headers,
     body: formData,
   });
+
+  // If we get 401 Unauthorized, try once more with a fresh token
+  if (response.status === 401) {
+    if (import.meta.env.DEV) {
+      console.log('Got 401 on form request, retrying with fresh token...');
+    }
+
+    token = await getAuthToken(true); // Force refresh
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    response = await fetch(url, {
+      ...options,
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));

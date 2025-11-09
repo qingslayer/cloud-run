@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Storage } from '@google-cloud/storage';
 import { getAIChatResponse } from '../services/gemini/chatService.js';
 import { getAISummary, getAIAnswer } from '../services/gemini/searchService.js';
+import { extractTextFromDocument, analyzeAndCategorizeDocument, extractStructuredData } from '../services/gemini/documentProcessor.js';
 import { Firestore, FieldValue } from '@google-cloud/firestore';
 import { analyzeQuery } from '../services/queryAnalyzer.js';
 import sessionCache from '../services/sessionCache.js';
@@ -215,6 +216,57 @@ router.get('/:id', async (req, res) => {
 });
 
 /**
+ * Analyze a document asynchronously (background processing)
+ * @param {string} documentId - Document ID
+ * @param {Buffer} fileBuffer - File data buffer
+ * @param {string} mimeType - File MIME type
+ */
+async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
+  console.log(`Starting background AI analysis for document ${documentId}`);
+
+  try {
+    const docRef = firestore.collection('documents').doc(documentId);
+    const base64Data = fileBuffer.toString('base64');
+
+    // Extract text
+    console.log('Extracting text...');
+    const extractedText = await extractTextFromDocument(base64Data, mimeType);
+    console.log(`Text extracted (length: ${extractedText.length})`);
+
+    // Analyze and categorize
+    console.log('Analyzing and categorizing...');
+    const categorization = await analyzeAndCategorizeDocument(extractedText);
+    console.log('Categorization complete:', categorization);
+
+    // Extract structured data
+    console.log('Extracting structured data...');
+    const structuredData = await extractStructuredData(extractedText, categorization.category);
+    console.log('Structured data extraction complete.');
+
+    // Update document with analysis results
+    const analysisResults = {
+      displayName: categorization.title,
+      category: categorization.category,
+      aiAnalysis: {
+        extractedText: extractedText,
+        category: categorization.category,
+        structuredData: structuredData,
+      },
+      status: 'complete',
+      analyzedAt: FieldValue.serverTimestamp(),
+    };
+
+    await docRef.update(analysisResults);
+    console.log(`Background AI analysis completed successfully for document ${documentId}`);
+
+  } catch (error) {
+    console.error(`Background AI analysis failed for document ${documentId}:`, error);
+    // Don't throw - we don't want to crash the process
+    // The document will remain in 'review' status and can be manually analyzed later
+  }
+}
+
+/**
  * POST /api/documents/upload
  * Upload a new document
  * Expects multipart/form-data with file and metadata
@@ -273,8 +325,14 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         category: category || 'uncategorized',
         storagePath: fileName,
         uploadDate: new Date().toISOString(),
+        status: 'review', // New documents start in review status
       };
       await docRef.set(documentMetadata);
+
+      // Trigger AI analysis in the background (don't wait for it)
+      analyzeDocumentAsync(documentId, file.buffer, file.mimetype).catch(err => {
+        console.error(`Background AI analysis failed for document ${documentId}:`, err);
+      });
 
       res.status(201).json(documentMetadata);
     } catch (firestoreError) {
@@ -410,7 +468,7 @@ router.patch('/:id', async (req, res) => {
     }
 
     const updateData = {};
-    const editableFields = ['displayName', 'category', 'notes'];
+    const editableFields = ['displayName', 'category', 'notes', 'status'];
 
     for (const field of editableFields) {
       if (updates.hasOwnProperty(field)) {
@@ -420,6 +478,11 @@ router.patch('/:id', async (req, res) => {
           updateData[field] = updates[field]; // Allow null for displayName
         }
       }
+    }
+
+    // Validate status field if present
+    if (updateData.status && !['review', 'complete'].includes(updateData.status)) {
+      return res.status(400).json({ error: 'Status must be either "review" or "complete"' });
     }
     
     // Don't allow category to be an empty string
@@ -450,10 +513,6 @@ router.patch('/:id', async (req, res) => {
     });
   }
 });
-
-import { extractTextFromDocument, analyzeAndCategorizeDocument, extractStructuredData } from '../services/gemini/documentProcessor.js';
-
-// ... (existing router code)
 
 /**
  * POST /api/documents/:id/analyze
@@ -502,12 +561,14 @@ router.post('/:id/analyze', async (req, res) => {
       console.log('Structured data extraction complete.');
 
       analysisResults = {
-        extractedText,
         displayName: categorization.title,
         category: categorization.category,
         aiAnalysis: {
-          ...structuredData, // Contains fields like dateOfService, provider, keyFindings, summary
+          extractedText: extractedText,
+          category: categorization.category,
+          structuredData: structuredData, // Contains fields like dateOfService, provider, keyFindings, summary
         },
+        status: 'complete', // Mark as complete after successful analysis
         analyzedAt: FieldValue.serverTimestamp(),
       };
 

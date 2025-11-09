@@ -12,19 +12,9 @@ interface DocumentCardProps {
   onView: (id: string) => void;
 }
 
-const ProcessingSpinner: React.FC = () => (
-    <div className="flex items-center space-x-1">
-        <div className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse" style={{ animationDelay: '0s' }}></div>
-        <div className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-        <div className="w-1.5 h-1.5 bg-sky-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-    </div>
-)
-
 const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView }) => {
   const { icon: CategoryIcon, color, lightColor } = categoryInfoMap[document.category];
-  const isProcessing = document.status === 'processing';
   const isForReview = document.status === 'review';
-  const hasError = document.status === 'error';
   const snippet = generateSnippet(document);
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -35,18 +25,16 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView 
     if (isButton || isLink) {
         return;
     }
-    if (!isProcessing) {
-      onView(document.id);
-    }
+    onView(document.id);
   };
 
   return (
-    <div 
+    <div
       onClick={handleCardClick}
       className={`group relative flex items-center p-4 rounded-2xl shadow-sm transition-all duration-300 border
           bg-white dark:bg-slate-800/50
           border-stone-200/80 dark:border-slate-800
-          ${isProcessing ? 'opacity-60 cursor-default' : 'cursor-pointer hover:shadow-md hover:border-teal-400/80 dark:hover:border-teal-500/80 hover:bg-stone-50/50 dark:hover:bg-slate-800'}
+          cursor-pointer hover:shadow-md hover:border-teal-400/80 dark:hover:border-teal-500/80 hover:bg-stone-50/50 dark:hover:bg-slate-800
           ${isForReview ? 'border-amber-500/60' : ''}`}
     >
       <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mr-4 ${lightColor}`}>
@@ -63,23 +51,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView 
       </div>
 
       <div className="flex-shrink-0 ml-4 flex items-center space-x-4">
-        {isProcessing && (
-            <div className="flex items-center space-x-2 px-2 py-1 rounded-md bg-sky-500/10">
-                <ProcessingSpinner />
-                <span className="text-xs font-semibold text-sky-600 dark:text-sky-400">Processing...</span>
-            </div>
-        )}
-        {hasError && (
-            <div className="px-2 py-1 rounded-md bg-red-500/10">
-              <p className="text-xs font-semibold text-red-500 dark:text-red-400">Failed</p>
-            </div>
-        )}
         {isForReview && (
             <button onClick={() => onView(document.id)} className="px-3 py-1.5 text-sm font-semibold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors shadow-md shadow-amber-500/20">
                 Review & Save
             </button>
         )}
-        {!isProcessing && !isForReview && !hasError && (
+        {!isForReview && (
             <>
                 <p className="text-sm text-slate-500 dark:text-slate-400 hidden md:block">{formatRelativeTime(new Date(document.uploadDate))}</p>
                 <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">

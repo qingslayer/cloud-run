@@ -96,21 +96,16 @@ const App: React.FC = () => {
   };
 
   const handleUpdateDocument = async (id: string, updates: Partial<DocumentFile>) => {
-    // If the update contains a real ID, it means we are replacing a temp doc
-    if (updates.id && id !== updates.id) {
+    try {
+      // Never send 'id' field in updates - it's immutable
+      const { id: _, ...safeUpdates } = updates as any;
+
+      const updatedDoc = await apiUpdateDocument(id, safeUpdates);
       setDocuments(prevDocs =>
-        prevDocs.map(doc => (doc.id === id ? { ...doc, ...updates } as DocumentFile : doc))
+        prevDocs.map(doc => (doc.id === id ? updatedDoc : doc))
       );
-    } else {
-      // Otherwise, it's a normal update
-      try {
-        const updatedDoc = await apiUpdateDocument(id, updates);
-        setDocuments(prevDocs =>
-          prevDocs.map(doc => (doc.id === id ? updatedDoc : doc))
-        );
-      } catch (error) {
-        console.error("Error updating document:", error);
-      }
+    } catch (error) {
+      console.error("Error updating document:", error);
     }
   };
 
@@ -151,61 +146,66 @@ const App: React.FC = () => {
   }, [selectedDocumentData]);
 
   const handleSelectDocument = useCallback(async (id: string) => {
+    console.log('🔍 handleSelectDocument called with id:', id);
+    console.log('   - isLoadingDocumentRef:', isLoadingDocumentRef.current);
+    console.log('   - lastSelectedDocumentIdRef:', lastSelectedDocumentIdRef.current);
+    console.log('   - selectedDocumentIdRef:', selectedDocumentIdRef.current);
+    console.log('   - reviewingDocumentIdRef:', reviewingDocumentIdRef.current);
+    console.log('   - selectedDocumentDataRef?.id:', selectedDocumentDataRef.current?.id);
+
     // Prevent multiple simultaneous calls
     if (isLoadingDocumentRef.current) {
-      console.log('Document already loading, skipping:', id);
+      console.log('❌ Document already loading, skipping:', id);
       return;
     }
-    
-    // Prevent rapid successive calls with the same ID - use refs only
-    if (lastSelectedDocumentIdRef.current === id && selectedDocumentDataRef.current?.id === id) {
-      console.log('Same document selected again, skipping:', id);
-      return;
-    }
-    
-    // Prevent calling if already selected with data - use refs only (they're synced via useEffect)
-    const isAlreadySelected = 
-      (selectedDocumentIdRef.current === id || reviewingDocumentIdRef.current === id) && 
+
+    // Check if document is already fully loaded and displayed
+    const isCurrentlyDisplayed =
+      (selectedDocumentIdRef.current === id || reviewingDocumentIdRef.current === id) &&
       selectedDocumentDataRef.current?.id === id;
-    
-    if (isAlreadySelected) {
-      console.log('Document already selected, skipping:', id);
+
+    if (isCurrentlyDisplayed) {
+      console.log('❌ Document already displayed, skipping:', id);
       return;
     }
-    
+
+    console.log('✅ Proceeding to load document:', id);
     isLoadingDocumentRef.current = true;
     lastSelectedDocumentIdRef.current = id;
-    
+
     try {
       const fullDoc = await getDocument(id);
-      
-      // Double-check we still need to set this (in case of race condition) - use refs
-      if ((selectedDocumentIdRef.current === id || reviewingDocumentIdRef.current === id) && 
-          selectedDocumentDataRef.current?.id === id) {
-        console.log('Document was already selected during fetch, skipping update');
-        isLoadingDocumentRef.current = false;
-        return;
-      }
-      
+      console.log('📄 Document fetched successfully:', fullDoc.id);
+      console.log('   - Document status:', fullDoc.status);
+      console.log('   - Document category:', fullDoc.category);
+
       // Update refs synchronously before setting state
       selectedDocumentDataRef.current = fullDoc;
-      
+
       setSelectedDocumentData(fullDoc);
-      
+
       if (fullDoc.status === 'review') {
+        console.log('   - Setting as reviewing document');
         reviewingDocumentIdRef.current = id;
         selectedDocumentIdRef.current = null;
         setReviewingDocumentId(id);
         setSelectedDocumentId(null);
       } else if (fullDoc.status === 'complete') {
+        console.log('   - Setting as selected document');
         selectedDocumentIdRef.current = id;
         reviewingDocumentIdRef.current = null;
         setSelectedDocumentId(id);
         setReviewingDocumentId(null);
+      } else {
+        console.warn('   - ⚠️ Unknown document status:', fullDoc.status);
       }
+
+      console.log('   - After setState - selectedDocumentIdRef:', selectedDocumentIdRef.current);
+      console.log('   - After setState - reviewingDocumentIdRef:', reviewingDocumentIdRef.current);
     } catch (error) {
-      console.error("Error fetching document details:", error);
-      isLoadingDocumentRef.current = false;
+      console.error("❌ Error fetching document details:", error);
+      // Clear refs on error so user can retry
+      selectedDocumentDataRef.current = null;
       lastSelectedDocumentIdRef.current = null;
     } finally {
       isLoadingDocumentRef.current = false;

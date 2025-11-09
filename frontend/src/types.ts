@@ -1,12 +1,15 @@
 export interface DocumentFile {
   id: string;
-  filename: string;
-  displayName: string;
+  filename: string; // Original file name from upload
+  name?: string; // Alias for filename (for compatibility)
+  displayName: string | null; // AI-generated human-readable name
   category: string;
+  fileType: string; // MIME type (e.g., 'application/pdf', 'image/jpeg')
   uploadDate: Date;
   status: 'review' | 'complete';
-  downloadUrl?: string;
-  
+  downloadUrl?: string; // Signed URL for viewing/downloading (only in GET /:id)
+
+  // AI analysis results (only present after analysis completes)
   aiAnalysis?: {
     extractedText: string;
     category: string;

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { DocumentFile } from '../types';
 import { UploadIcon } from './icons/UploadIcon';
-import { uploadDocument, analyzeDocument } from '../services/documentProcessor';
+import { uploadDocument } from '../services/documentProcessor';
 
 interface DocumentUploaderProps {
   onFilesChange: (files: DocumentFile[]) => void;
@@ -20,8 +20,8 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFilesChange, onUp
     if (!files || files.length === 0) return;
 
     const validFiles: File[] = [];
-    const tempDocs: DocumentFile[] = [];
 
+    // Validate files first
     for (const file of Array.from(files)) {
       if (!ALLOWED_TYPES.includes(file.type)) {
         alert(`File type not supported: ${file.name} (${file.type}). Please upload PDF, JPG, or PNG files.`);
@@ -31,50 +31,32 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFilesChange, onUp
         alert(`File is too large: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB). Maximum size is ${MAX_SIZE_MB} MB.`);
         continue;
       }
-      
-      const tempId = crypto.randomUUID();
-      const newDoc: Partial<DocumentFile> = {
-        id: tempId,
-        filename: file.name,
-        displayName: file.name,
-        uploadDate: new Date(),
-        category: 'Other',
-        status: 'processing',
-      };
-      tempDocs.push(newDoc as DocumentFile);
       validFiles.push(file);
     }
-    
-    if (tempDocs.length > 0) {
-      onFilesChange(tempDocs);
-    }
 
-    tempDocs.forEach(async (tempDoc, index) => {
-      const file = validFiles[index];
+    // Upload each valid file
+    for (const file of validFiles) {
       try {
-        // Step 1: Upload the document to get the initial record from the backend
+        console.log(`Uploading ${file.name}...`);
+
+        // Upload to backend - backend will auto-trigger AI analysis
         const uploadedDoc = await uploadDocument(file, 'Other', file.name);
-        
-        // Update the temp doc with the real ID and data
-        onUpdateDocument(tempDoc.id, { ...uploadedDoc, status: 'processing' } as Partial<DocumentFile>);
-        const realId = uploadedDoc.id;
 
-        // Step 2: Trigger the AI analysis
-        const analyzedDoc = await analyzeDocument(realId);
+        console.log(`Upload successful: ${uploadedDoc.id}, status: ${uploadedDoc.status}`);
 
-        // Step 3: Update the document with the final, processed data
-        onUpdateDocument(realId, { ...analyzedDoc, status: 'review' });
+        // Add the uploaded document to the UI
+        // Backend returns status: 'review' - AI is processing in background
+        onFilesChange([uploadedDoc]);
 
       } catch (error) {
-        console.error("Error processing file:", file.name, error);
-        onUpdateDocument(tempDoc.id, {
-          status: 'error',
-        });
+        console.error("Error uploading file:", file.name, error);
+        alert(`Failed to upload ${file.name}. Please try again.`);
       }
-    });
+    }
 
-    if(fileInputRef.current) {
-        fileInputRef.current.value = '';
+    // Clear the file input so the same file can be uploaded again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
   

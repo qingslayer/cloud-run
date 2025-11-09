@@ -36,6 +36,7 @@ const App: React.FC = () => {
   const [pageSearchResults, setPageSearchResults] = useState<UniversalSearchResult | null>(null);
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
 
   // Firebase auth state listener
   useEffect(() => {
@@ -224,13 +225,16 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-        // Send message with chat history to backend
-        const result = await sendChatMessage(message, chatMessages);
-        
-        const aiMessage: ChatMessageType = { 
-          id: (Date.now() + 1).toString(), 
-          role: 'model', 
-          text: result.text 
+        // Send message with chat history and sessionId to backend
+        const result = await sendChatMessage(message, chatMessages, chatSessionId || undefined);
+
+        // Store session ID for subsequent messages
+        setChatSessionId(result.sessionId);
+
+        const aiMessage: ChatMessageType = {
+          id: (Date.now() + 1).toString(),
+          role: 'model',
+          text: result.answer
         };
         setChatMessages(prev => [...prev, aiMessage]);
 
@@ -250,8 +254,9 @@ const App: React.FC = () => {
   const handleSearchSubmit = async (query: string) => {
     if (!query.trim()) return;
 
-    // Clear chat messages when starting new search
+    // Clear chat messages and session when starting new search
     setChatMessages([]);
+    setChatSessionId(null);
 
     setSearchQuery(query);
     setIsSearchLoading(true);
@@ -262,12 +267,17 @@ const App: React.FC = () => {
         // Backend handles AI vs simple search logic
         const searchResult = await processUniversalSearch(query);
         setPageSearchResults(searchResult);
+
+        // If search opened a chat session, store the sessionId
+        if (searchResult.type === 'chat') {
+          setChatSessionId(searchResult.sessionId);
+        }
     } catch (error) {
         console.error("Search failed:", error);
-        setPageSearchResults({ 
-          type: 'answer', 
-          answer: 'Sorry, an error occurred during the search.', 
-          sources: [] 
+        setPageSearchResults({
+          type: 'answer',
+          answer: 'Sorry, an error occurred during the search.',
+          referencedDocuments: []
         });
     } finally {
         setIsSearchLoading(false);
@@ -275,16 +285,33 @@ const App: React.FC = () => {
   };
 
   const handleAskFollowUp = () => {
-    if (pageSearchResults?.type !== 'answer' || !pageSearchResults.answer) return;
+    if (!pageSearchResults) return;
+
+    // Handle answer, summary, or chat types
+    const isValidForFollowUp =
+      (pageSearchResults.type === 'answer' && pageSearchResults.answer) ||
+      (pageSearchResults.type === 'summary' && pageSearchResults.summary) ||
+      (pageSearchResults.type === 'chat' && pageSearchResults.answer);
+
+    if (!isValidForFollowUp) return;
 
     // Set initial chat history from search
+    const responseText = pageSearchResults.type === 'summary'
+      ? pageSearchResults.summary
+      : pageSearchResults.answer;
+
     const initialHistory: ChatMessageType[] = [
         { id: 'followup-0', role: 'user', text: searchQuery },
-        { id: 'followup-1', role: 'model', text: pageSearchResults.answer },
+        { id: 'followup-1', role: 'model', text: responseText },
     ];
 
     setChatMessages(initialHistory);
-    
+
+    // If this was a chat-type result, preserve the sessionId
+    if (pageSearchResults.type === 'chat') {
+      setChatSessionId(pageSearchResults.sessionId);
+    }
+
     setView('dashboard');
     setIsRightPanelOpen(true);
   };

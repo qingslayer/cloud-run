@@ -9,17 +9,20 @@ import { ChatMessage } from '../types';
  * Send a chat message to the AI assistant
  * @param message - User's message
  * @param history - Previous chat history
- * @returns {Promise<{text: string, history: ChatMessage[]}>}
+ * @param sessionId - Optional session ID for maintaining context
+ * @returns {Promise<{answer: string, sessionId: string, history: ChatMessage[]}>}
  */
 export async function sendChatMessage(
   message: string,
-  history: ChatMessage[] = []
-): Promise<{ text: string; history: ChatMessage[] }> {
-  const response = await apiRequest('/api/ai/chat', {
+  history: ChatMessage[] = [],
+  sessionId?: string
+): Promise<{ answer: string; sessionId: string; history: ChatMessage[] }> {
+  const response = await apiRequest('/api/chat', {
     method: 'POST',
     body: JSON.stringify({
       message,
-      history: history.map(msg => ({
+      sessionId,
+      conversationHistory: history.map(msg => ({
         role: msg.role,
         text: msg.text
       }))
@@ -27,8 +30,17 @@ export async function sendChatMessage(
   });
 
   const data = await response.json();
+
+  // Build updated history with the new exchange
+  const updatedHistory: ChatMessage[] = [
+    ...history,
+    { id: Date.now().toString(), role: 'user', text: message },
+    { id: (Date.now() + 1).toString(), role: 'model', text: data.answer }
+  ];
+
   return {
-    text: data.text,
-    history: data.history
+    answer: data.answer,
+    sessionId: data.sessionId,
+    history: updatedHistory
   };
 }

@@ -91,19 +91,56 @@ ${documentContext}
       // The AI returns document references (IDs or partial objects)
       // We need to map them back to the full document objects from our input
       if (jsonResponse.referencedDocuments && Array.isArray(jsonResponse.referencedDocuments)) {
-        jsonResponse.referencedDocuments = jsonResponse.referencedDocuments
-          .map(ref => {
-            // Try to find the full document by ID or displayName
-            const docId = typeof ref === 'string' ? ref : ref.id;
-            const docName = typeof ref === 'object' ? ref.displayName : null;
+        const matchedDocs = [];
+        const unmatchedRefs = [];
 
-            return documents.find(d =>
-              d.id === docId ||
-              d.displayName === docName ||
-              (docName && d.filename === docName)
+        jsonResponse.referencedDocuments.forEach(ref => {
+          // Try to find the full document by ID or displayName
+          const docId = typeof ref === 'string' ? ref : ref.id;
+          const docName = typeof ref === 'object' ? (ref.displayName || ref.filename) : null;
+
+          // Try multiple matching strategies
+          let matchedDoc = documents.find(d => d.id === docId);
+
+          if (!matchedDoc && docName) {
+            // Try exact displayName match
+            matchedDoc = documents.find(d => d.displayName === docName);
+          }
+
+          if (!matchedDoc && docName) {
+            // Try exact filename match
+            matchedDoc = documents.find(d => d.filename === docName);
+          }
+
+          if (!matchedDoc && docName) {
+            // Try partial match (case-insensitive)
+            const normalizedName = docName.toLowerCase().trim();
+            matchedDoc = documents.find(d =>
+              d.displayName.toLowerCase().includes(normalizedName) ||
+              normalizedName.includes(d.displayName.toLowerCase()) ||
+              d.filename.toLowerCase().includes(normalizedName) ||
+              normalizedName.includes(d.filename.toLowerCase())
             );
-          })
-          .filter(Boolean); // Remove any that weren't found
+          }
+
+          if (matchedDoc) {
+            matchedDocs.push(matchedDoc);
+          } else {
+            unmatchedRefs.push(ref);
+          }
+        });
+
+        // Log unmatched references for debugging
+        if (unmatchedRefs.length > 0) {
+          console.warn('⚠️  Failed to match some document references:');
+          unmatchedRefs.forEach(ref => {
+            console.warn('  - Unmatched ref:', JSON.stringify(ref));
+          });
+          console.warn('  Available document IDs:', documents.map(d => d.id).join(', '));
+          console.warn('  Available displayNames:', documents.map(d => d.displayName).join(', '));
+        }
+
+        jsonResponse.referencedDocuments = matchedDocs;
       }
 
       return jsonResponse;
@@ -196,19 +233,56 @@ ${documentContext}
       // The AI returns document references (IDs or partial objects)
       // We need to map them back to the full document objects from our input
       if (jsonResponse.referencedDocuments && Array.isArray(jsonResponse.referencedDocuments)) {
-        jsonResponse.referencedDocuments = jsonResponse.referencedDocuments
-          .map(ref => {
-            // Try to find the full document by ID or displayName
-            const docId = typeof ref === 'string' ? ref : ref.id;
-            const docName = typeof ref === 'object' ? ref.displayName : null;
+        const matchedDocs = [];
+        const unmatchedRefs = [];
 
-            return documents.find(d =>
-              d.id === docId ||
-              d.displayName === docName ||
-              (docName && d.filename === docName)
+        jsonResponse.referencedDocuments.forEach(ref => {
+          // Try to find the full document by ID or displayName
+          const docId = typeof ref === 'string' ? ref : ref.id;
+          const docName = typeof ref === 'object' ? (ref.displayName || ref.filename) : null;
+
+          // Try multiple matching strategies
+          let matchedDoc = documents.find(d => d.id === docId);
+
+          if (!matchedDoc && docName) {
+            // Try exact displayName match
+            matchedDoc = documents.find(d => d.displayName === docName);
+          }
+
+          if (!matchedDoc && docName) {
+            // Try exact filename match
+            matchedDoc = documents.find(d => d.filename === docName);
+          }
+
+          if (!matchedDoc && docName) {
+            // Try partial match (case-insensitive)
+            const normalizedName = docName.toLowerCase().trim();
+            matchedDoc = documents.find(d =>
+              d.displayName.toLowerCase().includes(normalizedName) ||
+              normalizedName.includes(d.displayName.toLowerCase()) ||
+              d.filename.toLowerCase().includes(normalizedName) ||
+              normalizedName.includes(d.filename.toLowerCase())
             );
-          })
-          .filter(Boolean); // Remove any that weren't found
+          }
+
+          if (matchedDoc) {
+            matchedDocs.push(matchedDoc);
+          } else {
+            unmatchedRefs.push(ref);
+          }
+        });
+
+        // Log unmatched references for debugging
+        if (unmatchedRefs.length > 0) {
+          console.warn('⚠️  Failed to match some document references:');
+          unmatchedRefs.forEach(ref => {
+            console.warn('  - Unmatched ref:', JSON.stringify(ref));
+          });
+          console.warn('  Available document IDs:', documents.map(d => d.id).join(', '));
+          console.warn('  Available displayNames:', documents.map(d => d.displayName).join(', '));
+        }
+
+        jsonResponse.referencedDocuments = matchedDocs;
       }
 
       return jsonResponse;

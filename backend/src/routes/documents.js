@@ -359,7 +359,6 @@ async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
         structuredData: structuredData,
         searchSummary: searchSummary,  // Concise summary for efficient AI search
       },
-      status: 'complete',
       analyzedAt: FieldValue.serverTimestamp(),
     };
 
@@ -369,7 +368,6 @@ async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
   } catch (error) {
     console.error(`Background AI analysis failed for document ${documentId}:`, error);
     // Don't throw - we don't want to crash the process
-    // The document will remain in 'review' status and can be manually analyzed later
   }
 }
 
@@ -432,7 +430,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         category: category || 'uncategorized',
         storagePath: fileName,
         uploadDate: new Date().toISOString(),
-        status: 'review', // New documents start in review status
+        status: 'complete', // Documents are now considered complete by default
       };
       await docRef.set(documentMetadata);
 
@@ -577,19 +575,26 @@ router.patch('/:id', async (req, res) => {
     const updateData = {};
     const editableFields = ['displayName', 'category', 'notes', 'status'];
 
+    // Handle simple, top-level fields
     for (const field of editableFields) {
       if (updates.hasOwnProperty(field)) {
-        if (typeof updates[field] === 'string') {
+        // Allow notes to be an empty string, but trim others
+        if (typeof updates[field] === 'string' && field !== 'notes') {
           updateData[field] = updates[field].trim();
         } else {
-          updateData[field] = updates[field]; // Allow null for displayName
+          updateData[field] = updates[field];
         }
       }
     }
 
+    // Handle nested structuredData field using dot notation
+    if (updates['aiAnalysis.structuredData']) {
+        updateData['aiAnalysis.structuredData'] = updates['aiAnalysis.structuredData'];
+    }
+
     // Validate status field if present
-    if (updateData.status && !['review', 'complete'].includes(updateData.status)) {
-      return res.status(400).json({ error: 'Status must be either "review" or "complete"' });
+    if (updateData.status && !['complete'].includes(updateData.status)) {
+      return res.status(400).json({ error: 'Status must be "complete"' });
     }
     
     // Don't allow category to be an empty string

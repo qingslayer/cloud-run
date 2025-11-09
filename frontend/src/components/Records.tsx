@@ -4,9 +4,9 @@ import DocumentCard from './DocumentCard';
 import { SearchIcon } from './icons/SearchIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { UploadIcon } from './icons/UploadIcon';
-import UploadModal from './UploadModal';
 import { groupDocumentsByMonth } from '../utils/formatters';
 import { EmptyRecords } from './illustrations/EmptyRecords';
+import { categoryInfoMap } from '../utils/category-info';
 
 interface RecordsProps {
   documents: DocumentFile[];
@@ -17,22 +17,42 @@ interface RecordsProps {
   onSelectDocument: (id: string) => void;
   initialFilter: DocumentCategory | 'all';
   onError?: (message: string) => void;
+  viewedDocuments?: Set<string>;  // Track viewed documents
 }
 
 const categories: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
 
-const FilterPill: React.FC<{ label: string; isActive: boolean; onClick: () => void; }> = ({ label, isActive, onClick }) => (
-    <button
-        onClick={onClick}
-        className={`px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap border ${
-            isActive
-                ? 'bg-teal-600 text-white border-teal-600 shadow-md'
-                : 'bg-white dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 hover:bg-stone-100 dark:hover:bg-slate-800 border-stone-300 dark:border-slate-700'
-        }`}
-    >
-        {label}
-    </button>
-);
+const FilterPill: React.FC<{ label: string; category?: DocumentCategory; isActive: boolean; onClick: () => void; count?: number }> = ({ label, category, isActive, onClick, count }) => {
+    const IconComponent = category ? categoryInfoMap[category]?.icon : null;
+
+    return (
+        <button
+            onClick={onClick}
+            className={`relative flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-full transition-all duration-300 whitespace-nowrap ${
+                isActive
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md transform scale-105'
+                    : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+        >
+            {IconComponent && (
+                <IconComponent className={`w-4 h-4 ${isActive ? 'text-current' : categoryInfoMap[category!].color}`} />
+            )}
+            <span>{label}</span>
+            {count !== undefined && count > 0 && (
+                <span className={`ml-1.5 px-2 py-0.5 text-xs font-semibold rounded-full ${
+                    isActive
+                        ? 'bg-white/20 dark:bg-slate-900/20 text-current'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                }`}>
+                    {count}
+                </span>
+            )}
+            {isActive && (
+                <div className="absolute inset-0 rounded-full ring-2 ring-slate-900 dark:ring-white ring-opacity-20 dark:ring-opacity-20 pointer-events-none" />
+            )}
+        </button>
+    );
+};
 
 const Records: React.FC<RecordsProps> = ({
     documents,
@@ -43,11 +63,10 @@ const Records: React.FC<RecordsProps> = ({
     onSelectDocument,
     initialFilter,
     onError,
+    viewedDocuments = new Set(),
 }) => {
-    const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState(initialFilter);
     const [sortBy, setSortBy] = useState('date_desc');
-    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [dateFilter, setDateFilter] = useState<'all' | 'week' | 'month' | 'year'>('all');
 
     useEffect(() => {
@@ -55,17 +74,13 @@ const Records: React.FC<RecordsProps> = ({
     }, [initialFilter]);
 
     const sortedAndFilteredDocuments = useMemo(() => {
-        const lowercasedSearchTerm = searchTerm.toLowerCase();
         const now = new Date();
 
         const filtered = documents.filter(doc => {
-            // Search filter
-            const matchesSearch =
-                (doc.displayName || '').toLowerCase().includes(lowercasedSearchTerm) ||
-                (doc.aiAnalysis?.searchSummary || '').toLowerCase().includes(lowercasedSearchTerm) ||
-                (doc.aiAnalysis?.structuredData && Object.values(doc.aiAnalysis.structuredData).some(value =>
-                    String(value).toLowerCase().includes(lowercasedSearchTerm)
-                ));
+            // Only show documents that have completed AI analysis
+            if (doc.status !== 'complete') {
+                return false;
+            }
 
             // Category filter
             let matchesCategory = true;
@@ -93,7 +108,7 @@ const Records: React.FC<RecordsProps> = ({
                 }
             }
 
-            return matchesSearch && matchesCategory && matchesDate;
+            return matchesCategory && matchesDate;
         });
 
         return filtered.sort((a, b) => {
@@ -109,45 +124,38 @@ const Records: React.FC<RecordsProps> = ({
                     return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
             }
         });
-    }, [documents, searchTerm, filterType, dateFilter, sortBy]);
+    }, [documents, filterType, dateFilter, sortBy]);
 
     const groupedDocuments = useMemo<{ [key: string]: DocumentFile[] }>(() => groupDocumentsByMonth(sortedAndFilteredDocuments), [sortedAndFilteredDocuments]);
-    
-    const filterOptions = [ { label: 'All', value: 'all' }, ...categories.map(c => ({ label: c, value: c })) ];
+
+    // Calculate category counts for filter pills (only completed documents)
+    const categoryCounts = useMemo(() => {
+        const completedDocs = documents.filter(doc => doc.status === 'complete');
+        const counts: { [key: string]: number } = { all: completedDocs.length };
+        categories.forEach(cat => {
+            counts[cat] = completedDocs.filter(doc => doc.category === cat).length;
+        });
+        return counts;
+    }, [documents]);
 
     return (
         <>
         <div className="h-full pt-28 pb-20">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Upload Button */}
-                <div className="mb-8 flex items-center justify-between">
+                {/* Header */}
+                <div className="mb-8">
                     <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-white truncate">My Health Records</h1>
-                    <button 
-                        onClick={() => setIsUploadModalOpen(true)}
-                        className="flex items-center justify-center px-5 py-2.5 bg-teal-600 text-white font-semibold rounded-xl shadow-lg shadow-teal-500/30 hover:bg-teal-700 transition-all transform hover:scale-105"
-                    >
-                        <UploadIcon className="w-5 h-5 mr-2" />
-                        Upload New Record
-                    </button>
                 </div>
 
                 {/* Controls Panel */}
-                <div className="p-4 mb-6 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-stone-200 dark:border-slate-800 shadow-sm space-y-4 sticky top-28 z-30">
-                    <div className="flex flex-col sm:flex-row items-center gap-3">
-                        <div className="relative w-full sm:flex-1">
-                            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500 z-10" />
-                            <input
-                                type="text"
-                                placeholder="Search records..."
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                className="relative w-full pl-11 pr-4 py-2 bg-stone-100 dark:bg-slate-800 border border-stone-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
-                            />
-                        </div>
-                         <select
+                <div className="mb-8 space-y-6">
+                    {/* Sort Control */}
+                    <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Sort by</label>
+                        <select
                             value={sortBy}
                             onChange={e => setSortBy(e.target.value)}
-                            className="w-full sm:w-auto bg-stone-100 dark:bg-slate-800 border border-stone-300 dark:border-slate-700 rounded-lg py-2 px-3 focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                            className="px-3 py-1.5 text-sm font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-slate-300 dark:hover:border-slate-600 focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:ring-opacity-20 focus:outline-none transition-colors"
                         >
                             <option value="date_desc">Date: Newest</option>
                             <option value="date_asc">Date: Oldest</option>
@@ -158,16 +166,31 @@ const Records: React.FC<RecordsProps> = ({
 
                     {/* Category filters */}
                     <div>
-                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2 block">Category:</span>
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                            {filterOptions.map(opt => <FilterPill key={opt.value} label={opt.label} isActive={filterType === opt.value} onClick={() => setFilterType(opt.value as DocumentCategory | 'all')} /> )}
+                        <label className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 block">Filter by category</label>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <FilterPill
+                                label="All"
+                                isActive={filterType === 'all'}
+                                onClick={() => setFilterType('all')}
+                                count={categoryCounts.all}
+                            />
+                            {categories.map(cat => (
+                                <FilterPill
+                                    key={cat}
+                                    label={cat}
+                                    category={cat}
+                                    isActive={filterType === cat}
+                                    onClick={() => setFilterType(cat)}
+                                    count={categoryCounts[cat]}
+                                />
+                            ))}
                         </div>
                     </div>
 
                     {/* Date filters */}
                     <div>
-                        <span className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2 block">Time Period:</span>
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                        <label className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3 block">Time period</label>
+                        <div className="flex flex-wrap items-center gap-2">
                             <FilterPill label="All Time" isActive={dateFilter === 'all'} onClick={() => setDateFilter('all')} />
                             <FilterPill label="Past Week" isActive={dateFilter === 'week'} onClick={() => setDateFilter('week')} />
                             <FilterPill label="Past Month" isActive={dateFilter === 'month'} onClick={() => setDateFilter('month')} />
@@ -182,16 +205,18 @@ const Records: React.FC<RecordsProps> = ({
                         Object.keys(groupedDocuments).length > 0 ? (
                             Object.entries(groupedDocuments).map(([monthYear, docs]: [string, DocumentFile[]]) => (
                                 <div key={monthYear} className="relative">
-                                    <div className="sticky top-[188px] z-20 py-1 bg-stone-50/80 dark:bg-[#0B1120]/80 backdrop-blur-sm">
-                                        <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400">{monthYear}</h2>
+                                    <div className="sticky top-28 z-20 py-2 -mx-4 px-4 bg-stone-50/95 dark:bg-[#0B1120]/95 backdrop-blur-sm">
+                                        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">{monthYear}</h2>
                                     </div>
-                                    <div className="space-y-3 mt-2">
+                                    <div className="space-y-3 mt-3">
                                         {docs.map((doc) => (
-                                            <DocumentCard 
-                                                key={doc.id} 
-                                                document={doc} 
-                                                onRemove={onRemoveDocument} 
+                                            <DocumentCard
+                                                key={doc.id}
+                                                document={doc}
+                                                onRemove={onRemoveDocument}
                                                 onView={onSelectDocument}
+                                                onEdit={onSelectDocument}
+                                                isViewed={viewedDocuments.has(doc.id)}
                                             />
                                         ))}
                                     </div>
@@ -214,14 +239,6 @@ const Records: React.FC<RecordsProps> = ({
                 </div>
             </div>
         </div>
-        
-        <UploadModal
-            isOpen={isUploadModalOpen}
-            onClose={() => setIsUploadModalOpen(false)}
-            onFilesChange={onFilesChange}
-            onUpdateDocument={onUpdateDocument}
-            onError={onError}
-        />
         </>
     );
 };

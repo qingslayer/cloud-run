@@ -6,7 +6,7 @@ export interface DocumentFile {
   category: string;
   fileType: string; // MIME type (e.g., 'application/pdf', 'image/jpeg')
   uploadDate: Date;
-  status: 'review' | 'complete';
+  status?: 'complete';
   downloadUrl?: string; // Signed URL for viewing/downloading (only in GET /:id)
 
   // AI analysis results (only present after analysis completes)

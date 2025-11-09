@@ -14,17 +14,18 @@ interface DashboardProps {
   documents: DocumentFile[];
   onNavigateToRecords: (category: DocumentCategory) => void;
   onSelectDocument: (id: string) => void;
-  onUploadClick?: () => void;
+  isLoading?: boolean;
 }
 
 const ALL_CATEGORIES: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
 
 const CategoryTile: React.FC<{ category: DocumentCategory; count: number; onClick: () => void }> = ({ category, count, onClick }) => {
     const { icon: Icon, color, lightColor, gradient } = categoryInfoMap[category];
+
     return (
-        <button 
+        <button
             onClick={onClick}
-            className={`group relative text-left w-full h-full flex flex-col justify-between p-5 rounded-3xl shadow-sm transition-all duration-300 overflow-hidden border 
+            className={`group relative text-left w-full h-full flex flex-col justify-between p-5 rounded-3xl shadow-sm transition-all duration-300 overflow-hidden border
             ${gradient}
             border-stone-200/80 dark:border-slate-800
             hover:shadow-xl hover:scale-[1.03] hover:border-teal-400/80 dark:hover:border-teal-500/80`}
@@ -35,7 +36,9 @@ const CategoryTile: React.FC<{ category: DocumentCategory; count: number; onClic
                 </div>
                 <p className="mt-4 text-base font-bold text-slate-800 dark:text-slate-100">{category}</p>
             </div>
-             <p className="text-sm text-slate-500 dark:text-slate-400">{count} record{count !== 1 ? 's' : ''}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+                {count} record{count !== 1 ? 's' : ''}
+            </p>
         </button>
     )
 };
@@ -64,20 +67,18 @@ const RecentDocumentItem: React.FC<{ document: DocumentFile, onSelect: (id: stri
 }
 
 
-const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, onSelectDocument, onUploadClick, isLoading = false }) => {
+const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, onSelectDocument, isLoading = false }) => {
     
     const categoryStats = useMemo(() => {
-        const stats = documents.reduce((acc, doc) => {
-            if (doc.status === 'complete') {
-                acc[doc.category] = (acc[doc.category] || 0) + 1;
-            }
-            return acc;
-        }, {} as { [key in DocumentCategory]?: number });
+        const stats: { [key in DocumentCategory]?: number } = {};
 
+        documents.forEach(doc => {
+            stats[doc.category] = (stats[doc.category] || 0) + 1;
+        });
+
+        // Initialize all categories with 0 if not present
         ALL_CATEGORIES.forEach(cat => {
-            if (!stats[cat]) {
-                stats[cat] = 0;
-            }
+            if (!stats[cat]) stats[cat] = 0;
         });
 
         return stats;
@@ -91,6 +92,12 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
     return (
     <div className="h-full pt-28 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header - Always visible */}
+            {!isLoading && (
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-slate-800 dark:text-white">Health Dashboard</h1>
+                </div>
+            )}
 
             {isLoading ? (
                 <div className="flex justify-center py-20">
@@ -102,8 +109,13 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
                     <section>
                         <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-4">Browse by Category</h2>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                            {Object.entries(categoryStats).map(([category, count]) => (
-                                <CategoryTile key={category} category={category as DocumentCategory} count={count!} onClick={() => onNavigateToRecords(category as DocumentCategory)} />
+                            {ALL_CATEGORIES.map(category => (
+                                <CategoryTile
+                                    key={category}
+                                    category={category}
+                                    count={categoryStats[category] || 0}
+                                    onClick={() => onNavigateToRecords(category)}
+                                />
                             ))}
                         </div>
                     </section>
@@ -128,20 +140,10 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
                   <div className="mb-10">
                     <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-3">Welcome to Health Vault</h2>
                     <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-                      Your secure, AI-powered health record manager. Get started by uploading your first document.
+                      Your secure, AI-powered health record manager. Click the <span className="font-semibold">Upload</span> button in the top right to add your first document.
                     </p>
                   </div>
 
-                  {/* Upload Button */}
-                  {onUploadClick && (
-                    <button
-                      onClick={onUploadClick}
-                      className="inline-flex items-center justify-center px-8 py-4 bg-teal-600 text-white text-lg font-semibold rounded-xl shadow-lg shadow-teal-500/30 hover:bg-teal-700 transition-all transform hover:scale-105 mb-12"
-                    >
-                      <UploadIcon className="w-6 h-6 mr-3" />
-                      Upload Your First Record
-                    </button>
-                  )}
 
                   {/* Getting Started Guide */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">

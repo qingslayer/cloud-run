@@ -14,6 +14,7 @@ interface TopCommandBarProps {
   toggleRightPanel: () => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  uploadButton?: React.ReactNode;
 }
 
 // Defined at the top level for stability and to prevent re-renders
@@ -38,7 +39,7 @@ const NavItem: React.FC<{
     );
 };
 
-const TopCommandBar: React.FC<TopCommandBarProps> = ({ activeView, setView, onSearch, onLogout, toggleRightPanel, theme, setTheme }) => {
+const TopCommandBar: React.FC<TopCommandBarProps> = ({ activeView, setView, onSearch, onLogout, toggleRightPanel, theme, setTheme, uploadButton }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [query, setQuery] = useState('');
     const menuRef = useRef<HTMLDivElement>(null);
@@ -105,7 +106,8 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({ activeView, setView, onSe
         </form>
 
         {/* Right: Actions & User Menu */}
-        <div className="flex items-center">
+        <div className="flex items-center space-x-3">
+            {uploadButton}
             <div className="relative" ref={menuRef}>
                 <button 
                     onClick={() => setIsMenuOpen(prev => !prev)}

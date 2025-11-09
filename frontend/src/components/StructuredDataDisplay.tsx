@@ -129,9 +129,12 @@ const GenericRenderer: React.FC<{ data: Record<string, any> }> = ({ data }) => {
     );
   }
 
+  // Extract notes if present
+  const { _notes, ...dataWithoutNotes } = data;
+
   return (
     <div className="space-y-6">
-      {Object.entries(data).map(([key, value]) => (
+      {Object.entries(dataWithoutNotes).map(([key, value]) => (
         <div key={key}>
           <h3 className="text-xs font-bold tracking-wider text-teal-600 dark:text-teal-400 mb-2 uppercase">
             {key.replace(/_/g, ' ')}
@@ -175,6 +178,14 @@ const GenericRenderer: React.FC<{ data: Record<string, any> }> = ({ data }) => {
           </div>
         </div>
       ))}
+
+      {/* Display notes if present */}
+      {_notes && (
+        <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+          <h3 className="text-xs font-bold tracking-wider text-slate-600 dark:text-slate-400 mb-2 uppercase">Additional Notes</h3>
+          <p className="text-base text-slate-800 dark:text-slate-200 whitespace-pre-wrap">{_notes}</p>
+        </div>
+      )}
     </div>
   );
 };

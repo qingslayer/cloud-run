@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { DocumentFile } from '../types';
 import { UploadIcon } from './icons/UploadIcon';
 import { uploadDocument } from '../services/documentProcessor';
@@ -9,6 +9,8 @@ interface DocumentUploaderProps {
   onUploadStart?: () => void;
   onUploadComplete?: () => void;
   onError?: (message: string) => void;
+  compact?: boolean;
+  uploadedDocuments?: DocumentFile[];  // To track processing status
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
@@ -17,6 +19,7 @@ const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 interface UploadProgress {
   filename: string;
+  documentId?: string;  // Track document ID for status updates
   status: 'uploading' | 'processing' | 'complete' | 'error';
   error?: string;
 }
@@ -26,12 +29,36 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   onUpdateDocument,
   onUploadStart,
   onUploadComplete,
-  onError
+  onError,
+  compact = false,
+  uploadedDocuments = []
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Monitor uploaded documents and update progress status when they complete processing
+  useEffect(() => {
+    uploadProgress.forEach((progress) => {
+      if (progress.documentId && progress.status === 'processing') {
+        const doc = uploadedDocuments.find(d => d.id === progress.documentId);
+        if (doc && doc.status === 'complete') {
+          // Document finished processing, update progress status
+          setUploadProgress(prev => prev.map(p =>
+            p.documentId === progress.documentId
+              ? { ...p, status: 'complete' }
+              : p
+          ));
+
+          // Clear this specific progress item after a short delay
+          setTimeout(() => {
+            setUploadProgress(prev => prev.filter(p => p.documentId !== progress.documentId));
+          }, 2000);
+        }
+      }
+    });
+  }, [uploadedDocuments, uploadProgress]);
 
   const handleFileChange = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -86,22 +113,15 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
         console.log(`Upload successful: ${uploadedDoc.id}, status: ${uploadedDoc.status}`);
 
-        // Update status to processing (AI is working)
+        // Update status to processing (AI is working) and store document ID
         setUploadProgress(prev => prev.map((p, idx) =>
-          idx === i ? { ...p, status: 'processing' } : p
+          idx === i ? { ...p, status: 'processing', documentId: uploadedDoc.id } : p
         ));
 
-        // Add the uploaded document to the UI
-        // Backend returns status: 'review' - AI is processing in background
+        // Add the uploaded document to the UI. The backend will process it asynchronously.
         onFilesChange([uploadedDoc]);
 
-        // Mark as complete after a short delay
-        setTimeout(() => {
-          setUploadProgress(prev => prev.map((p, idx) =>
-            idx === i ? { ...p, status: 'complete' } : p
-          ));
-        }, 500);
-
+        // Don't mark as complete yet - will be done when document status changes
         successCount++;
 
       } catch (error) {
@@ -126,10 +146,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
     setIsUploading(false);
     onUploadComplete?.();
 
-    // Clear progress after a delay
-    setTimeout(() => {
-      setUploadProgress([]);
-    }, 3000);
+    // Don't auto-clear progress - wait for documents to finish processing
   };
   
   const handleClick = () => {
@@ -182,9 +199,9 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
       case 'uploading':
         return 'Uploading...';
       case 'processing':
-        return 'AI Processing...';
+        return 'AI processing...';
       case 'complete':
-        return 'Complete';
+        return 'Upload successful!';
       case 'error':
         return 'Failed';
     }

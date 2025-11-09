@@ -6,11 +6,10 @@ import Dashboard from './components/Dashboard';
 import Records from './components/Records';
 import Login from './components/Login';
 import DocumentDetailView from './components/DocumentDetailView';
-import DocumentReviewView from './components/DocumentReviewView';
 import ToastContainer from './components/ToastContainer';
 import ConfirmationModal from './components/ConfirmationModal';
 import LoadingState from './components/LoadingState';
-import UploadModal from './components/UploadModal';
+import GlobalUploadButton from './components/GlobalUploadButton';
 import RightPanel from './components/RightPanel';
 import Settings from './components/Settings';
 import TopCommandBar from './components/TopCommandBar';
@@ -30,12 +29,16 @@ const App: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessageType[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
-  const [reviewingDocumentId, setReviewingDocumentId] = useState<string | null>(null);
   const [selectedDocumentData, setSelectedDocumentData] = useState<DocumentFile | null>(null);
   const isLoadingDocumentRef = useRef(false);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
   const [recordsFilter, setRecordsFilter] = useState<DocumentCategory | 'all'>('all');
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+  const [viewedDocuments, setViewedDocuments] = useState<Set<string>>(() => {
+    // Load viewed documents from localStorage
+    const stored = localStorage.getItem('viewedDocuments');
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  });
 
   // State for integrated search flow
   const [pageSearchResults, setPageSearchResults] = useState<UniversalSearchResult | null>(null);
@@ -51,8 +54,6 @@ const App: React.FC = () => {
     isDeleting: boolean;
   }>({ isOpen: false, type: 'single', isDeleting: false });
 
-  // State for upload modal
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // Firebase auth state listener
   useEffect(() => {
@@ -133,29 +134,39 @@ const App: React.FC = () => {
     setDocuments(prevDocs => [...newFiles, ...prevDocs]);
   };
 
-  const handleUpdateDocument = async (id: string, updates: Partial<DocumentFile>) => {
+  const handleUpdateDocument = useCallback(async (id: string, updates: Partial<DocumentFile>) => {
     try {
       // Never send 'id' field in updates - it's immutable
       const { id: _, ...safeUpdates } = updates as any;
 
       const updatedDoc = await apiUpdateDocument(id, safeUpdates);
+      
+      // Update the main documents list
       setDocuments(prevDocs =>
         prevDocs.map(doc => (doc.id === id ? updatedDoc : doc))
       );
+
+      // ALSO update the currently selected document if it matches
+      if (selectedDocumentId === id) {
+        setSelectedDocumentData(updatedDoc);
+      }
+
+      success("Document updated successfully!");
+
     } catch (err) {
       console.error("Error updating document:", err);
       error("Failed to update document. Please try again.");
     }
-  };
+  }, [selectedDocumentId, success, error]);
 
-  const handleRequestDeleteDocument = (id: string) => {
+  const handleRequestDeleteDocument = useCallback((id: string) => {
     setDeleteConfirmation({
       isOpen: true,
       documentId: id,
       type: 'single',
       isDeleting: false
     });
-  };
+  }, []);
 
   const confirmDeleteDocument = async () => {
     const { documentId } = deleteConfirmation;
@@ -181,17 +192,11 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteReviewingDocument = (id: string) => {
-    handleRequestDeleteDocument(id);
-    setReviewingDocumentId(null);
-  };
-
   const handleRemoveMultipleDocuments = (ids: string[]) => {
     ids.forEach(id => handleRequestDeleteDocument(id));
   };
 
   const selectedDocumentIdRef = useRef<string | null>(null);
-  const reviewingDocumentIdRef = useRef<string | null>(null);
   const selectedDocumentDataRef = useRef<DocumentFile | null>(null);
   const lastSelectedDocumentIdRef = useRef<string | null>(null);
 
@@ -199,10 +204,6 @@ const App: React.FC = () => {
   useEffect(() => {
     selectedDocumentIdRef.current = selectedDocumentId;
   }, [selectedDocumentId]);
-
-  useEffect(() => {
-    reviewingDocumentIdRef.current = reviewingDocumentId;
-  }, [reviewingDocumentId]);
 
   useEffect(() => {
     selectedDocumentDataRef.current = selectedDocumentData;
@@ -216,7 +217,7 @@ const App: React.FC = () => {
 
     // Check if document is already fully loaded and displayed
     const isCurrentlyDisplayed =
-      (selectedDocumentIdRef.current === id || reviewingDocumentIdRef.current === id) &&
+      (selectedDocumentIdRef.current === id) &&
       selectedDocumentDataRef.current?.id === id;
 
     if (isCurrentlyDisplayed) {
@@ -231,20 +232,20 @@ const App: React.FC = () => {
 
       // Update refs synchronously before setting state
       selectedDocumentDataRef.current = fullDoc;
-
       setSelectedDocumentData(fullDoc);
 
-      if (fullDoc.status === 'review') {
-        reviewingDocumentIdRef.current = id;
-        selectedDocumentIdRef.current = null;
-        setReviewingDocumentId(id);
-        setSelectedDocumentId(null);
-      } else if (fullDoc.status === 'complete') {
-        selectedDocumentIdRef.current = id;
-        reviewingDocumentIdRef.current = null;
-        setSelectedDocumentId(id);
-        setReviewingDocumentId(null);
-      }
+      selectedDocumentIdRef.current = id;
+      setSelectedDocumentId(id);
+
+      // Mark document as viewed
+      setViewedDocuments(prev => {
+        const newSet = new Set(prev);
+        newSet.add(id);
+        // Persist to localStorage
+        localStorage.setItem('viewedDocuments', JSON.stringify(Array.from(newSet)));
+        return newSet;
+      });
+
     } catch (err) {
       console.error("Error fetching document details:", err);
       error("Failed to load document. Please try again.");
@@ -263,34 +264,6 @@ const App: React.FC = () => {
     isLoadingDocumentRef.current = false;
     setSelectedDocumentId(null);
     setSelectedDocumentData(null);
-  };
-
-  const handleCloseReview = () => {
-    reviewingDocumentIdRef.current = null;
-    selectedDocumentDataRef.current = null;
-    lastSelectedDocumentIdRef.current = null;
-    isLoadingDocumentRef.current = false;
-    setReviewingDocumentId(null);
-    setSelectedDocumentData(null);
-  };
-
-  const handleConfirmReview = async (id: string, updatedData: Partial<DocumentFile>) => {
-    try {
-      await handleUpdateDocument(id, { ...updatedData, status: 'complete' });
-
-      // Fetch the updated document to refresh the state with latest data
-      const refreshedDoc = await getDocument(id);
-      setDocuments(prevDocs =>
-        prevDocs.map(doc => (doc.id === id ? refreshedDoc : doc))
-      );
-
-      setReviewingDocumentId(null);
-      setSelectedDocumentData(null);
-      success("Record saved successfully!");
-    } catch (err) {
-      console.error("Error confirming review:", err);
-      error("Failed to save record. Please try again.");
-    }
   };
 
   const handleSendMessage = useCallback(async (message: string) => {
@@ -402,14 +375,12 @@ const App: React.FC = () => {
       setView('dashboard');
       setIsRightPanelOpen(false);
       setSelectedDocumentId(null);
-      setReviewingDocumentId(null);
     } catch (err) {
       console.error('Error signing out:', err);
       error("Failed to sign out. Please try again.");
     }
   };
 
-  const reviewingDocument = reviewingDocumentId ? selectedDocumentData : null;
   const selectedDocument = selectedDocumentId ? selectedDocumentData : null;
 
   // Show loading state while checking authentication
@@ -422,14 +393,10 @@ const App: React.FC = () => {
     return <Login />;
   }
 
-  if (selectedDocument) {
-    return <DocumentDetailView document={selectedDocument} onClose={handleCloseDocumentDetail} onUpdate={handleUpdateDocument} onDelete={handleRequestDeleteDocument} />;
-  }
-
   const renderMainContent = () => {
     switch(view) {
         case 'dashboard':
-            return <Dashboard documents={documents} onNavigateToRecords={handleNavigateToRecords} onSelectDocument={handleSelectDocument} onUploadClick={() => setIsUploadModalOpen(true)} isLoading={isDocumentsLoading} />;
+            return <Dashboard documents={documents} onNavigateToRecords={handleNavigateToRecords} onSelectDocument={handleSelectDocument} isLoading={isDocumentsLoading} />;
         case 'records':
             return <Records
                         initialFilter={recordsFilter}
@@ -440,6 +407,7 @@ const App: React.FC = () => {
                         onRemoveMultipleDocuments={handleRemoveMultipleDocuments}
                         onSelectDocument={handleSelectDocument}
                         onError={error}
+                        viewedDocuments={viewedDocuments}
                    />;
         case 'settings':
             return <Settings theme={theme} setTheme={setTheme} onDeleteAllRecords={handleDeleteAllRecords} />;
@@ -464,6 +432,14 @@ const App: React.FC = () => {
           theme={theme}
           setTheme={setTheme}
           toggleRightPanel={() => setIsRightPanelOpen(prev => !prev)}
+          uploadButton={
+            <GlobalUploadButton
+              onFilesChange={handleFilesChange}
+              onUpdateDocument={handleUpdateDocument}
+              onError={error}
+              documents={documents}
+            />
+          }
         />
         <main className="flex-1 overflow-y-auto">
           {renderMainContent()}
@@ -475,17 +451,18 @@ const App: React.FC = () => {
           messages={chatMessages}
           onSendMessage={handleSendMessage}
           isLoading={isLoading}
-          hasDocuments={documents.filter(d => d.status === 'complete').length > 0}
+          hasDocuments={documents.length > 0}
         />
 
-       {reviewingDocument && (
-        <DocumentReviewView
-          document={reviewingDocument}
-          onSave={handleConfirmReview}
-          onClose={handleCloseReview}
-          onDelete={handleDeleteReviewingDocument}
-        />
-       )}
+        {/* Render DocumentDetailView as an overlay */}
+        {selectedDocument && (
+            <DocumentDetailView 
+                document={selectedDocument} 
+                onClose={handleCloseDocumentDetail} 
+                onUpdate={handleUpdateDocument} 
+                onDelete={handleRequestDeleteDocument} 
+            />
+        )}
 
        <ConfirmationModal
          isOpen={deleteConfirmation.isOpen}
@@ -500,14 +477,6 @@ const App: React.FC = () => {
          confirmText={deleteConfirmation.type === 'all' ? 'Delete All Forever' : 'Delete Forever'}
          variant="danger"
          isLoading={deleteConfirmation.isDeleting}
-       />
-
-       <UploadModal
-         isOpen={isUploadModalOpen}
-         onClose={() => setIsUploadModalOpen(false)}
-         onFilesChange={handleFilesChange}
-         onUpdateDocument={handleUpdateDocument}
-         onError={error}
        />
 
        <ToastContainer toasts={toasts} onClose={removeToast} />

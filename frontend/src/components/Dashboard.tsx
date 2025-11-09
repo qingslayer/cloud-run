@@ -47,7 +47,7 @@ const RecentDocumentItem: React.FC<{ document: DocumentFile, onSelect: (id: stri
                     <CategoryIcon className={`w-5 h-5 ${color}`} />
                 </div>
                 <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{document.title}</p>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{document.displayName}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">{document.category}</p>
                 </div>
             </div>

@@ -1,3 +1,19 @@
+export interface DocumentFile {
+  id: string;
+  filename: string;
+  displayName: string;
+  category: string;
+  uploadDate: Date;
+  status: 'review' | 'complete';
+  downloadUrl?: string;
+  
+  aiAnalysis?: {
+    extractedText: string;
+    category: string;
+    structuredData: Record<string, any>;
+  };
+}
+
 export type DocumentCategory = 
   | 'Lab Results'
   | 'Prescriptions'
@@ -5,23 +21,6 @@ export type DocumentCategory =
   | "Doctor's Notes"
   | 'Vaccination Records'
   | 'Other';
-
-export interface DocumentFile {
-  id: string;
-  name: string;
-  title: string;
-  type: string;
-  size: number;
-  base64Data: string;
-  previewUrl: string;
-  uploadDate: Date;
-  category: DocumentCategory;
-  userId: string;
-  extractedText: string;
-  status: 'processing' | 'review' | 'complete' | 'error';
-  structuredData?: any;
-  userNotes?: string;
-}
 
 export interface ChatMessage {
   id: string;

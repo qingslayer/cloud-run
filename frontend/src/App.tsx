@@ -1,11 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from './config/firebase';
 import { DocumentFile, ChatMessage as ChatMessageType, DocumentCategory, Theme, View, UniversalSearchResult } from './types';
 import Dashboard from './components/Dashboard';
 import Records from './components/Records';
 import Login from './components/Login';
-import { sampleDocuments } from './sample-data';
 import DocumentDetailView from './components/DocumentDetailView';
 import DocumentReviewView from './components/DocumentReviewView';
 import SuccessToast from './components/SuccessToast';
@@ -15,7 +14,7 @@ import TopCommandBar from './components/TopCommandBar';
 import SearchResultsPage from './components/SearchResultsPage';
 import { sendChatMessage } from './services/chatService';
 import { processUniversalSearch } from './services/searchService';
-
+import { getDocuments, uploadDocument, updateDocument as apiUpdateDocument, deleteDocument as apiDeleteDocument, getDocument } from './services/documentProcessor';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -26,6 +25,8 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [reviewingDocumentId, setReviewingDocumentId] = useState<string | null>(null);
+  const [selectedDocumentData, setSelectedDocumentData] = useState<DocumentFile | null>(null);
+  const isLoadingDocumentRef = useRef(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
   const [recordsFilter, setRecordsFilter] = useState<DocumentCategory | 'all'>('all');
@@ -41,16 +42,19 @@ const App: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setIsAuthLoading(false);
-      
-      // Load sample documents for demo purposes when user logs in
-      if (user && documents.length === 0) {
-        setDocuments(sampleDocuments);
+      if (user) {
+        // Load documents when user is authenticated
+        getDocuments().then(({ documents: fetchedDocuments }) => {
+          setDocuments(fetchedDocuments);
+        }).catch((error) => {
+          console.error("Error loading documents:", error);
+        });
       }
     });
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, []);
+  }, []); // Empty dependency array - only set up listener once on mount
 
 
   useEffect(() => {
@@ -82,6 +86,7 @@ const App: React.FC = () => {
 
   const handleDeleteAllRecords = () => {
     if (window.confirm("Are you sure you want to delete all your records? This action cannot be undone.")) {
+        documents.forEach(doc => apiDeleteDocument(doc.id));
         setDocuments([]);
     }
   };
@@ -90,14 +95,32 @@ const App: React.FC = () => {
     setDocuments(prevDocs => [...newFiles, ...prevDocs]);
   };
 
-  const handleUpdateDocument = (id: string, updates: Partial<DocumentFile>) => {
-    setDocuments(prevDocs =>
-      prevDocs.map(doc => (doc.id === id ? { ...doc, ...updates } : doc))
-    );
+  const handleUpdateDocument = async (id: string, updates: Partial<DocumentFile>) => {
+    // If the update contains a real ID, it means we are replacing a temp doc
+    if (updates.id && id !== updates.id) {
+      setDocuments(prevDocs =>
+        prevDocs.map(doc => (doc.id === id ? { ...doc, ...updates } as DocumentFile : doc))
+      );
+    } else {
+      // Otherwise, it's a normal update
+      try {
+        const updatedDoc = await apiUpdateDocument(id, updates);
+        setDocuments(prevDocs =>
+          prevDocs.map(doc => (doc.id === id ? updatedDoc : doc))
+        );
+      } catch (error) {
+        console.error("Error updating document:", error);
+      }
+    }
   };
 
-  const handleRemoveDocument = (id: string) => {
-    setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
+  const handleRemoveDocument = async (id: string) => {
+    try {
+      await apiDeleteDocument(id);
+      setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
+    } catch (error) {
+      console.error("Error deleting document:", error);
+    }
   };
 
   const handleDeleteReviewingDocument = (id: string) => {
@@ -106,40 +129,113 @@ const App: React.FC = () => {
   };
 
   const handleRemoveMultipleDocuments = (ids: string[]) => {
-    setDocuments(prevDocs => prevDocs.filter(doc => !ids.includes(doc.id)));
+    ids.forEach(id => handleRemoveDocument(id));
   };
 
-  const handleSelectDocument = (id: string) => {
-    const doc = documents.find(d => d.id === id);
-    if (!doc) return;
+  const selectedDocumentIdRef = useRef<string | null>(null);
+  const reviewingDocumentIdRef = useRef<string | null>(null);
+  const selectedDocumentDataRef = useRef<DocumentFile | null>(null);
+  const lastSelectedDocumentIdRef = useRef<string | null>(null);
+  
+  // Keep refs in sync with state
+  useEffect(() => {
+    selectedDocumentIdRef.current = selectedDocumentId;
+  }, [selectedDocumentId]);
+  
+  useEffect(() => {
+    reviewingDocumentIdRef.current = reviewingDocumentId;
+  }, [reviewingDocumentId]);
+  
+  useEffect(() => {
+    selectedDocumentDataRef.current = selectedDocumentData;
+  }, [selectedDocumentData]);
 
-    if (doc.status === 'review') {
-      setReviewingDocumentId(id);
-    } else if (doc.status === 'complete') {
-      setSelectedDocumentId(id);
+  const handleSelectDocument = useCallback(async (id: string) => {
+    // Prevent multiple simultaneous calls
+    if (isLoadingDocumentRef.current) {
+      console.log('Document already loading, skipping:', id);
+      return;
     }
-  };
+    
+    // Prevent rapid successive calls with the same ID - use refs only
+    if (lastSelectedDocumentIdRef.current === id && selectedDocumentDataRef.current?.id === id) {
+      console.log('Same document selected again, skipping:', id);
+      return;
+    }
+    
+    // Prevent calling if already selected with data - use refs only (they're synced via useEffect)
+    const isAlreadySelected = 
+      (selectedDocumentIdRef.current === id || reviewingDocumentIdRef.current === id) && 
+      selectedDocumentDataRef.current?.id === id;
+    
+    if (isAlreadySelected) {
+      console.log('Document already selected, skipping:', id);
+      return;
+    }
+    
+    isLoadingDocumentRef.current = true;
+    lastSelectedDocumentIdRef.current = id;
+    
+    try {
+      const fullDoc = await getDocument(id);
+      
+      // Double-check we still need to set this (in case of race condition) - use refs
+      if ((selectedDocumentIdRef.current === id || reviewingDocumentIdRef.current === id) && 
+          selectedDocumentDataRef.current?.id === id) {
+        console.log('Document was already selected during fetch, skipping update');
+        isLoadingDocumentRef.current = false;
+        return;
+      }
+      
+      // Update refs synchronously before setting state
+      selectedDocumentDataRef.current = fullDoc;
+      
+      setSelectedDocumentData(fullDoc);
+      
+      if (fullDoc.status === 'review') {
+        reviewingDocumentIdRef.current = id;
+        selectedDocumentIdRef.current = null;
+        setReviewingDocumentId(id);
+        setSelectedDocumentId(null);
+      } else if (fullDoc.status === 'complete') {
+        selectedDocumentIdRef.current = id;
+        reviewingDocumentIdRef.current = null;
+        setSelectedDocumentId(id);
+        setReviewingDocumentId(null);
+      }
+    } catch (error) {
+      console.error("Error fetching document details:", error);
+      isLoadingDocumentRef.current = false;
+      lastSelectedDocumentIdRef.current = null;
+    } finally {
+      isLoadingDocumentRef.current = false;
+    }
+  }, []); // Empty dependencies - use refs only to avoid function recreation
 
   const handleCloseDocumentDetail = () => {
+    selectedDocumentIdRef.current = null;
+    selectedDocumentDataRef.current = null;
+    lastSelectedDocumentIdRef.current = null;
+    isLoadingDocumentRef.current = false;
     setSelectedDocumentId(null);
+    setSelectedDocumentData(null);
   };
   
   const handleCloseReview = () => {
+    reviewingDocumentIdRef.current = null;
+    selectedDocumentDataRef.current = null;
+    lastSelectedDocumentIdRef.current = null;
+    isLoadingDocumentRef.current = false;
     setReviewingDocumentId(null);
+    setSelectedDocumentData(null);
   };
 
   const handleConfirmReview = (id: string, updatedData: Partial<DocumentFile>) => {
-    setDocuments(prevDocs => 
-      prevDocs.map(doc => 
-        doc.id === id 
-          ? { ...doc, ...updatedData, status: 'complete' } 
-          : doc
-      )
-    );
+    handleUpdateDocument(id, { ...updatedData, status: 'complete' });
     setReviewingDocumentId(null);
     setShowSuccessToast(true);
   };
-
+  
   const handleSendMessage = useCallback(async (message: string) => {
     if (!message.trim()) return;
 
@@ -212,12 +308,6 @@ const App: React.FC = () => {
     setView('dashboard');
     setIsRightPanelOpen(true);
   };
-
-  const handleLogin = (user: User) => {
-    // Auth state is managed by Firebase listener
-    // Load sample documents for the user
-    setDocuments(sampleDocuments);
-  };
   
   const handleLogout = async () => {
     try {
@@ -234,8 +324,8 @@ const App: React.FC = () => {
     }
   };
 
-  const reviewingDocument = documents.find(doc => doc.id === reviewingDocumentId);
-  const selectedDocument = documents.find(doc => doc.id === selectedDocumentId);
+  const reviewingDocument = reviewingDocumentId ? selectedDocumentData : null;
+  const selectedDocument = selectedDocumentId ? selectedDocumentData : null;
 
   // Show loading state while checking authentication
   if (isAuthLoading) {
@@ -251,7 +341,7 @@ const App: React.FC = () => {
 
   // Show login if not authenticated
   if (!currentUser) {
-    return <Login onLogin={handleLogin} />;
+    return <Login />;
   }
   
   if (selectedDocument) {

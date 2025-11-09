@@ -17,10 +17,9 @@ interface DocumentReviewViewProps {
 const categories: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
 
 const DocumentReviewView: React.FC<DocumentReviewViewProps> = ({ document, onClose, onSave, onDelete }) => {
-  const [title, setTitle] = useState(document.title || '');
+  const [displayName, setDisplayName] = useState(document.displayName || '');
   const [category, setCategory] = useState(document.category || 'Other');
-  const [structuredData, setStructuredData] = useState(document.structuredData || {});
-  const [userNotes, setUserNotes] = useState(document.userNotes || '');
+  const [structuredData, setStructuredData] = useState(document.aiAnalysis?.structuredData || {});
   const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
@@ -32,7 +31,14 @@ const DocumentReviewView: React.FC<DocumentReviewViewProps> = ({ document, onClo
   }, [onClose]);
 
   const handleSave = () => {
-    onSave(document.id, { title, category, structuredData, userNotes });
+    onSave(document.id, { 
+      displayName, 
+      category, 
+      aiAnalysis: {
+        ...document.aiAnalysis,
+        structuredData,
+      }
+    });
   };
   
   const handleDelete = () => {
@@ -51,7 +57,7 @@ const DocumentReviewView: React.FC<DocumentReviewViewProps> = ({ document, onClo
             <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-stone-200 dark:border-slate-800">
                 <div>
                     <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Review Document</h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-md" title={document.name}>{document.name}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 truncate max-w-md" title={document.filename}>{document.filename}</p>
                 </div>
                 <button
                     onClick={onClose}
@@ -74,10 +80,14 @@ const DocumentReviewView: React.FC<DocumentReviewViewProps> = ({ document, onClo
                         </div>
                         <div className="w-full h-full flex items-center justify-center p-4">
                             <div style={{ transform: `scale(${zoom})`, transformOrigin: 'center', transition: 'transform 0.2s ease' }}>
-                                {document.type.startsWith('image/') ? (
-                                    <img src={document.base64Data} alt={document.name} className="max-w-full max-h-full object-contain rounded-md shadow-lg" />
+                                {document.downloadUrl ? (
+                                    document.filename.endsWith('.pdf') ? (
+                                        <embed src={document.downloadUrl} type="application/pdf" className="w-[800px] h-[calc(100vh-250px)] min-h-[500px] rounded-md" />
+                                    ) : (
+                                        <img src={document.downloadUrl} alt={document.filename} className="max-w-full max-h-full object-contain rounded-md shadow-lg" />
+                                    )
                                 ) : (
-                                    <embed src={document.base64Data} type="application/pdf" className="w-[800px] h-[calc(100vh-250px)] min-h-[500px] rounded-md" />
+                                    <div className="text-center text-slate-500">Preview not available</div>
                                 )}
                             </div>
                         </div>
@@ -91,8 +101,8 @@ const DocumentReviewView: React.FC<DocumentReviewViewProps> = ({ document, onClo
                             <div>
                                 <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-1 block">Document Title</label>
                                 <input 
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
+                                    value={displayName}
+                                    onChange={(e) => setDisplayName(e.target.value)}
                                     className="w-full bg-white dark:bg-slate-800/60 border border-stone-300 dark:border-slate-700 rounded-lg p-2.5 text-base text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none"
                                 />
                             </div>
@@ -110,18 +120,8 @@ const DocumentReviewView: React.FC<DocumentReviewViewProps> = ({ document, onClo
                         <section>
                             <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-2 text-lg">Verify Extracted Details</h3>
                             <div className="p-4 bg-stone-100 dark:bg-slate-900/50 rounded-xl border border-stone-200 dark:border-slate-800">
-                                <EditableStructuredData category={category} data={structuredData} setData={setStructuredData} />
+                                <EditableStructuredData data={structuredData} setData={setStructuredData} />
                             </div>
-                        </section>
-                        <section>
-                            <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-2 text-lg">Add Your Notes</h3>
-                            <textarea 
-                                value={userNotes}
-                                onChange={(e) => setUserNotes(e.target.value)}
-                                placeholder="Add personal notes or reminders here..."
-                                rows={5}
-                                className="w-full text-base bg-white dark:bg-slate-800/60 rounded-xl p-3 border border-stone-200 dark:border-slate-700 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none text-slate-800 dark:text-slate-200 placeholder:text-slate-500"
-                            />
                         </section>
                     </div>
                 </div>

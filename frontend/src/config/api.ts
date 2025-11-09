@@ -16,11 +16,14 @@ export async function getAuthToken(): Promise<string | null> {
   try {
     const user = auth.currentUser;
     if (!user) {
+      console.warn('No authenticated user found when getting auth token');
       return null;
     }
     
-    // Get the ID token, forcing refresh if it's expired
-    const token = await user.getIdToken(false);
+    // Get the ID token, forcing refresh to ensure it's valid
+    // Setting forceRefresh=true ensures we always get a fresh, valid token
+    const token = await user.getIdToken(true);
+    console.log('Got auth token for user:', user.email);
     return token;
   } catch (error) {
     console.error('Error getting auth token:', error);
@@ -54,6 +57,49 @@ export async function apiRequest(
   const response = await fetch(url, {
     ...options,
     headers,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || `API request failed: ${response.statusText}`);
+  }
+
+  return response;
+}
+
+/**
+ * Make an authenticated API request with FormData (for file uploads)
+ * @param endpoint - API endpoint
+ * @param formData - The FormData object to send
+ * @param options - Fetch options
+ * @returns {Promise<Response>}
+ */
+export async function apiFormRequest(
+  endpoint: string,
+  formData: FormData,
+  options: RequestInit = {}
+): Promise<Response> {
+  const token = await getAuthToken();
+
+  const headers: HeadersInit = {
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // When using FormData, the browser automatically sets the 'Content-Type'
+  // to 'multipart/form-data' with the correct boundary.
+  // Do not set it manually.
+
+  const url = `${API_BASE_URL}${endpoint}`;
+
+  const response = await fetch(url, {
+    ...options,
+    method: 'POST', // FormData requests are typically POST
+    headers,
+    body: formData,
   });
 
   if (!response.ok) {

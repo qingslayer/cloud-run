@@ -52,8 +52,14 @@ const Records: React.FC<RecordsProps> = ({
     }, [initialFilter]);
 
     const sortedAndFilteredDocuments = useMemo(() => {
+        const lowercasedSearchTerm = searchTerm.toLowerCase();
         const filtered = documents.filter(doc => {
-            const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) || doc.extractedText.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = 
+                (doc.displayName || '').toLowerCase().includes(lowercasedSearchTerm) ||
+                (doc.aiAnalysis?.extractedText || '').toLowerCase().includes(lowercasedSearchTerm) ||
+                (doc.aiAnalysis?.structuredData && Object.values(doc.aiAnalysis.structuredData).some(value => 
+                    String(value).toLowerCase().includes(lowercasedSearchTerm)
+                ));
             
             let matchesFilter = true;
             if (filterType !== 'all') {
@@ -66,14 +72,14 @@ const Records: React.FC<RecordsProps> = ({
         return filtered.sort((a, b) => {
             switch (sortBy) {
                 case 'date_asc':
-                    return a.uploadDate.getTime() - b.uploadDate.getTime();
+                    return new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime();
                 case 'name_asc':
-                    return a.title.localeCompare(b.title);
+                    return (a.displayName || '').localeCompare(b.displayName || '');
                 case 'name_desc':
-                    return b.title.localeCompare(a.title);
+                    return (b.displayName || '').localeCompare(a.displayName || '');
                 case 'date_desc':
                 default:
-                    return b.uploadDate.getTime() - a.uploadDate.getTime();
+                    return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
             }
         });
     }, [documents, searchTerm, filterType, sortBy]);

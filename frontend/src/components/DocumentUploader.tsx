@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { DocumentFile } from '../types';
 import { UploadIcon } from './icons/UploadIcon';
-import { processDocument } from '../services/documentProcessor';
+import { uploadDocument, analyzeDocument } from '../services/documentProcessor';
 
 interface DocumentUploaderProps {
   onFilesChange: (files: DocumentFile[]) => void;
@@ -12,36 +12,6 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'
 const MAX_SIZE_MB = 10;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
-/**
- * In a real-world app, this function would handle the secure upload to Google Cloud Storage.
- * This entire process MUST happen over a secure HTTPS connection to ensure encryption in transit.
- * 1. It would call YOUR backend with the file details (name, type).
- * 2. Your backend would securely generate a short-lived "signed URL" for uploading.
- * 3. This function would use that URL to upload the file directly to GCS from the client.
- * 4. After the upload, it would return the file's unique identifier (e.g., GCS path).
- * This flow ensures client-side code never handles long-lived secret keys.
- */
-const uploadFileToCloud = async (file: File): Promise<string> => {
-  console.log(`Simulating upload for ${file.name}...`);
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1500)); 
-  const fileIdentifier = `uploads/demo-user-01/${crypto.randomUUID()}-${file.name}`;
-  console.log(`Simulated upload complete. File identifier: ${fileIdentifier}`);
-  // In a real app, this identifier would be returned from your backend after confirming the upload.
-  return fileIdentifier;
-};
-
-
-// This function is no longer needed client-side for uploads, but is kept for OCR processing.
-const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-  });
-};
-
 const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFilesChange, onUpdateDocument }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -49,8 +19,8 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFilesChange, onUp
   const handleFileChange = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    const newDocuments: DocumentFile[] = [];
     const validFiles: File[] = [];
+    const tempDocs: DocumentFile[] = [];
 
     for (const file of Array.from(files)) {
       if (!ALLOWED_TYPES.includes(file.type)) {
@@ -62,58 +32,43 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ onFilesChange, onUp
         continue;
       }
       
-      const newDoc: DocumentFile = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        title: file.name, // Temporary title
-        type: file.type,
-        size: file.size,
-        // The Base64 data is no longer stored here for the main file.
-        // It will be replaced by a cloud storage URL/identifier.
-        base64Data: '', // This will be used for AI processing only.
-        previewUrl: URL.createObjectURL(file),
+      const tempId = crypto.randomUUID();
+      const newDoc: Partial<DocumentFile> = {
+        id: tempId,
+        filename: file.name,
+        displayName: file.name,
         uploadDate: new Date(),
-        category: 'Other', // Temporary category
-        userId: 'demo-user-01',
-        extractedText: '',
+        category: 'Other',
         status: 'processing',
       };
-      newDocuments.push(newDoc);
+      tempDocs.push(newDoc as DocumentFile);
       validFiles.push(file);
     }
     
-    if (newDocuments.length > 0) {
-      onFilesChange(newDocuments);
+    if (tempDocs.length > 0) {
+      onFilesChange(tempDocs);
     }
 
-    newDocuments.forEach(async (doc, index) => {
+    tempDocs.forEach(async (tempDoc, index) => {
       const file = validFiles[index];
       try {
-        // Step 1: Securely upload the file to cloud storage (simulated).
-        // The 'base64Data' field is now used as a placeholder for the cloud storage path/ID.
-        const cloudFileIdentifier = await uploadFileToCloud(file);
+        // Step 1: Upload the document to get the initial record from the backend
+        const uploadedDoc = await uploadDocument(file, 'Other', file.name);
         
-        // Step 2: Convert file to base64 and send to backend for AI processing
-        const processingBase64 = await fileToBase64(file);
-        
-        // Call backend API to process the document (extract, categorize, structure)
-        const result = await processDocument(processingBase64, file.type);
-        
-        // Step 3: Update the document with the final, processed data and its cloud identifier.
-        onUpdateDocument(doc.id, {
-          base64Data: cloudFileIdentifier, // Now this field stores the cloud path, not the file content.
-          extractedText: result.extractedText,
-          title: result.title, 
-          category: result.category,
-          status: result.status,
-          structuredData: result.structuredData,
-        });
+        // Update the temp doc with the real ID and data
+        onUpdateDocument(tempDoc.id, { ...uploadedDoc, status: 'processing' } as Partial<DocumentFile>);
+        const realId = uploadedDoc.id;
+
+        // Step 2: Trigger the AI analysis
+        const analyzedDoc = await analyzeDocument(realId);
+
+        // Step 3: Update the document with the final, processed data
+        onUpdateDocument(realId, { ...analyzedDoc, status: 'review' });
 
       } catch (error) {
         console.error("Error processing file:", file.name, error);
-        onUpdateDocument(doc.id, {
+        onUpdateDocument(tempDoc.id, {
           status: 'error',
-          extractedText: 'Failed to process this document.',
         });
       }
     });

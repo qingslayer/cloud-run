@@ -16,17 +16,17 @@ export const isOutOfRange = (valueStr: string, rangeStr: string): boolean => {
 };
 
 export const generateSnippet = (document: DocumentFile): string | null => {
-    if (document.status !== 'complete' || !document.structuredData) return null;
+    if (document.status !== 'complete' || !document.aiAnalysis?.structuredData) return null;
 
     try {
         switch (document.category) {
             case 'Lab Results':
-                const results = document.structuredData.results || [];
+                const results = document.aiAnalysis.structuredData.results || [];
                 const flaggedCount = results.filter((r: any) => isOutOfRange(r.value, r.referenceRange)).length;
                 return flaggedCount > 0 ? `${flaggedCount} value${flaggedCount > 1 ? 's' : ''} flagged` : 'All values within range';
             
             case 'Prescriptions':
-                const prescriptions = document.structuredData.prescriptions || [];
+                const prescriptions = document.aiAnalysis.structuredData.prescriptions || [];
                 if (prescriptions.length > 0) {
                     const firstRx = prescriptions[0];
                     return `${firstRx.medication} - ${firstRx.dosage}`;
@@ -34,11 +34,11 @@ export const generateSnippet = (document: DocumentFile): string | null => {
                 return 'No prescriptions found.';
 
             case 'Imaging Reports':
-                return document.structuredData.impression ? `Impression: ${document.structuredData.impression}` : 'No impression found.';
+                return document.aiAnalysis.structuredData.impression ? `Impression: ${document.aiAnalysis.structuredData.impression}` : 'No impression found.';
             
             default:
-                if (document.extractedText) {
-                    return document.extractedText.substring(0, 100).replace(/\s+/g, ' ') + '...';
+                if (document.aiAnalysis.extractedText) {
+                    return document.aiAnalysis.extractedText.substring(0, 100).replace(/\s+/g, ' ') + '...';
                 }
                 return null;
         }

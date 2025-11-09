@@ -41,11 +41,17 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({ document, o
             </button>
         </div>
         <div className="flex-grow mt-3 overflow-auto rounded-lg">
-             {document.type.startsWith('image/') ? (
-                <img src={document.base64Data} alt={document.name} className="max-h-full max-w-full mx-auto object-contain" />
-            ) : (
-                <embed src={document.base64Data} type="application/pdf" className="w-full h-full" />
-            )}
+             {document.downloadUrl ? (
+                document.type.startsWith('image/') ? (
+                  <img src={document.downloadUrl} alt={document.name} className="max-h-full max-w-full mx-auto object-contain" />
+              ) : (
+                  <embed src={document.downloadUrl} type="application/pdf" className="w-full h-full" />
+              )
+             ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-white">No preview available.</p>
+                </div>
+             )}
         </div>
       </div>
     </div>

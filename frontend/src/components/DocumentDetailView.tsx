@@ -38,7 +38,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
               <span className={`text-sm font-semibold px-3 py-1.5 rounded-lg ${lightColor} ${color}`}>
                   {document.category}
               </span>
-              <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mt-3">{document.title}</h1>
+              <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mt-3">{document.displayName}</h1>
             </div>
             
             {/* Document Overview & Key Info */}
@@ -52,14 +52,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                                 <CalendarIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mt-0.5 mr-3 flex-shrink-0" />
                                 <div>
                                     <p className="font-semibold text-slate-700 dark:text-slate-300">Upload Date</p>
-                                    <p className="text-slate-500 dark:text-slate-400">{document.uploadDate.toLocaleDateString()} ({formatRelativeTime(document.uploadDate)})</p>
-                                </div>
-                            </div>
-                            <div className="flex items-start">
-                                <DatabaseIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mt-0.5 mr-3 flex-shrink-0" />
-                                <div>
-                                    <p className="font-semibold text-slate-700 dark:text-slate-300">File Size</p>
-                                    <p className="text-slate-500 dark:text-slate-400">{formatBytes(document.size)}</p>
+                                    <p className="text-slate-500 dark:text-slate-400">{new Date(document.uploadDate).toLocaleDateString()} ({formatRelativeTime(new Date(document.uploadDate))})</p>
                                 </div>
                             </div>
                         </div>
@@ -72,23 +65,13 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                         <EyeIcon className="w-5 h-5 mr-2" />
                         View Original Document
                     </button>
-                    
-                    {document.userNotes && (
-                        <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700/80 rounded-2xl p-5 shadow-sm">
-                            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-2 flex items-center">
-                                <ClipboardNotesIcon className="w-5 h-5 mr-2 text-slate-500" />
-                                Your Notes
-                            </h2>
-                            <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{document.userNotes}</p>
-                        </div>
-                    )}
                 </div>
 
                 {/* Right Column: Key Information */}
                 <div className="lg:col-span-2">
                     <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700/80 rounded-2xl shadow-sm">
                         <div className="p-5">
-                            <StructuredDataDisplay data={document.structuredData} category={document.category} />
+                            <StructuredDataDisplay data={document.aiAnalysis?.structuredData} category={document.category as DocumentCategory} />
                         </div>
                     </div>
                 </div>

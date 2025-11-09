@@ -54,7 +54,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView 
       </div>
 
       <div className="flex-grow min-w-0">
-        <p className="text-base font-bold text-slate-800 dark:text-slate-100 truncate" title={document.title}>{document.title}</p>
+        <p className="text-base font-bold text-slate-800 dark:text-slate-100 truncate" title={document.displayName}>{document.displayName}</p>
         {snippet && (
           <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400 truncate">
             {snippet}
@@ -81,9 +81,9 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView 
         )}
         {!isProcessing && !isForReview && !hasError && (
             <>
-                <p className="text-sm text-slate-500 dark:text-slate-400 hidden md:block">{formatRelativeTime(document.uploadDate)}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 hidden md:block">{formatRelativeTime(new Date(document.uploadDate))}</p>
                 <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <a href={document.base64Data} download={document.name} title="Download" onClick={(e) => e.stopPropagation()} className="p-2 rounded-full text-slate-500 hover:text-teal-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors">
+                    <a href={document.downloadUrl} download={document.filename} title="Download" onClick={(e) => e.stopPropagation()} className="p-2 rounded-full text-slate-500 hover:text-teal-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors">
                         <DownloadIcon className="h-5 w-5" />
                     </a>
                     <button onClick={(e) => { e.stopPropagation(); onRemove(document.id); }} title="Delete" className="p-2 rounded-full text-slate-500 hover:text-red-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors">

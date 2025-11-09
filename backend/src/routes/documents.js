@@ -88,17 +88,68 @@ router.post('/search', async (req, res) => {
 
     const { type, category, keywords, timeRange } = analyzeQuery(query);
 
+    console.log(`Query: "${query}" → Type: ${type}, Category: ${category}, Time: ${timeRange ? timeRange.type : 'none'}`);
+
+    // Helper function to apply time filter only (for direct document queries)
+    const applyTimeFilter = (docs) => {
+      if (!timeRange) return docs;
+
+      return docs.filter(doc => {
+        const docDate = new Date(doc.uploadDate);
+
+        if (timeRange.type === 'after') {
+          return docDate > new Date(timeRange.value);
+        } else if (timeRange.type === 'year') {
+          return docDate.getFullYear() === timeRange.value;
+        } else if (timeRange.type === 'yearFrom') {
+          return docDate.getFullYear() >= timeRange.value;
+        }
+        return true;
+      });
+    };
+
+    // Helper function to filter documents by time range AND keywords (for AI queries)
+    const filterDocumentsForAI = (docs) => {
+      // First apply time filter
+      let filtered = applyTimeFilter(docs);
+
+      // Then apply keyword filter if keywords exist
+      if (keywords && keywords.length > 0) {
+        filtered = filtered.filter(doc => {
+          const searchableText = [
+            doc.filename?.toLowerCase() || '',
+            doc.displayName?.toLowerCase() || '',
+            doc.category?.toLowerCase() || '',
+            doc.notes?.toLowerCase() || '',
+            JSON.stringify(doc.aiAnalysis?.structuredData || {}).toLowerCase(),
+            (doc.aiAnalysis?.extractedText || '').toLowerCase().substring(0, 5000), // First 5000 chars
+          ].join(' ');
+
+          // Each keyword group must have at least one match
+          const allGroupsMatch = keywords.every(group =>
+            group.some(term => searchableText.includes(term.toLowerCase()))
+          );
+
+          return allGroupsMatch;
+        });
+      }
+
+      return filtered;
+    };
+
     switch (type) {
       case 'documents': {
         let firestoreQuery = firestore.collection('documents').where('userId', '==', uid);
         if (category) {
           firestoreQuery = firestoreQuery.where('category', '==', category);
         }
-        // Add timeRange filter later
         const snapshot = await firestoreQuery.get();
-        const documents = snapshot.docs.map(doc => doc.data());
-        
-        console.log(`Simple search for category '${category}' returned ${documents.length} documents. No AI was used.`);
+        let documents = snapshot.docs.map(doc => doc.data());
+
+        // For direct document queries, only apply time filter (category is already filtered by Firestore)
+        documents = applyTimeFilter(documents);
+
+        console.log(`Simple search for category '${category}' returned ${documents.length} documents after filtering. No AI was used.`);
 
         return res.json({
           type: 'documents',
@@ -112,43 +163,32 @@ router.post('/search', async (req, res) => {
 // ... (existing code)
 
       case 'summary': {
-        const documentsSnapshot = await firestore.collection('documents').where('userId', '==', uid).get();
-        const documents = documentsSnapshot.docs.map(doc => doc.data());
+        let firestoreQuery = firestore.collection('documents').where('userId', '==', uid);
+        if (category) {
+          firestoreQuery = firestoreQuery.where('category', '==', category);
+        }
+        const documentsSnapshot = await firestoreQuery.get();
+        let documents = documentsSnapshot.docs.map(doc => doc.data());
+
+        // For AI queries, apply both time and keyword filters to narrow down context
+        documents = filterDocumentsForAI(documents);
+
         const summaryResult = await getAISummary(query, documents);
         return res.json({ type: 'summary', query, ...summaryResult });
       }
       case 'answer': {
-        const documentsSnapshot = await firestore.collection('documents').where('userId', '==', uid).get();
-        const documents = documentsSnapshot.docs.map(doc => doc.data());
+        let firestoreQuery = firestore.collection('documents').where('userId', '==', uid);
+        if (category) {
+          firestoreQuery = firestoreQuery.where('category', '==', category);
+        }
+        const documentsSnapshot = await firestoreQuery.get();
+        let documents = documentsSnapshot.docs.map(doc => doc.data());
+
+        // For AI queries, apply both time and keyword filters to narrow down context
+        documents = filterDocumentsForAI(documents);
+
         const answerResult = await getAIAnswer(query, documents);
         return res.json({ type: 'answer', query, ...answerResult });
-      }
-      
-
-// ... (existing code)
-
-      case 'chat': {
-        const sessionId = uuidv4();
-        const documentsSnapshot = await firestore.collection('documents').where('userId', '==', uid).get();
-        const documents = documentsSnapshot.docs.map(doc => doc.data());
-        const chatResult = await getAIChatResponse(query, documents);
-
-        // Cache the new session
-        sessionCache.set(sessionId, {
-          userId: uid,
-          documents,
-          conversationHistory: [
-            { role: 'user', text: query },
-            { role: 'model', text: chatResult.answer },
-          ],
-        });
-
-        return res.json({
-          type: 'chat',
-          query,
-          sessionId,
-          ...chatResult,
-        });
       }
 
       default:

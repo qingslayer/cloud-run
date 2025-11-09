@@ -13,7 +13,14 @@ interface DocumentCardProps {
 }
 
 const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView }) => {
-  const { icon: CategoryIcon, color, lightColor } = categoryInfoMap[document.category];
+  // Fallback to 'Other' if category is not in the map
+  const categoryInfo = categoryInfoMap[document.category];
+
+  if (!categoryInfo) {
+    console.warn(`Unknown category "${document.category}" for document ${document.id}. Using 'Other' as fallback.`);
+  }
+
+  const { icon: CategoryIcon, color, lightColor } = categoryInfo || categoryInfoMap['Other'];
   const isForReview = document.status === 'review';
   const snippet = generateSnippet(document);
 

@@ -103,8 +103,8 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                         {documentsHeader}
                     </h2>
                     <div className="space-y-3">
-                        {documentsToShow.map(doc => (
-                            <DocumentCard key={doc.id} document={doc} onView={onSelectDocument} onRemove={() => {}} />
+                        {documentsToShow.map((doc, index) => (
+                            <DocumentCard key={doc.id || `doc-${index}`} document={doc} onView={onSelectDocument} onRemove={() => {}} />
                         ))}
                     </div>
                 </div>

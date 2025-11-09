@@ -9,22 +9,44 @@ import { ai, model } from './client.js';
  * Process a natural language search query
  * @param {string} query - User's search query
  * @param {Array} documents - User's documents to search
- * @returns {Promise<{answer: string, sources: Array}>}
+ * @returns {Promise<{answer: string, referencedDocuments: Array}>}
  */
 export async function getAIAnswer(query, documents = []) {
   const documentContext = documents
     .map(doc => {
       const a = doc.aiAnalysis || {};
-      const keyFindings = (a.keyFindings || []).map(f => `- ${f.finding}: ${f.result}`).join('\n');
-      return `--- DOCUMENT: ${doc.displayName} (Category: ${doc.category}) ---\nSummary: ${a.summary}\nProvider: ${a.provider}\nKey Findings:\n${keyFindings}\n--- END DOCUMENT ---`;
+      const structuredDataStr = a.structuredData
+        ? Object.entries(a.structuredData)
+            .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+            .join('\n')
+        : 'No structured data available';
+
+      return `--- DOCUMENT: ${doc.displayName || doc.filename} (Category: ${doc.category}) ---
+Structured Data:
+${structuredDataStr}
+
+Full Text:
+${a.extractedText || 'No text extracted'}
+--- END DOCUMENT ---`;
     })
     .join('\n\n');
 
-  const prompt = `You are a direct Q&A engine for a health app. Your task is to answer the user's question factually and concisely based *only* on the provided document context. 
+  const prompt = `You are a direct Q&A engine for a health app. Your task is to answer the user's question factually and concisely based *only* on the provided document context.
 
 --- DOCUMENT CONTEXT ---
 ${documentContext}
 --- END DOCUMENT CONTEXT ---
+
+--- MEDICAL TERMINOLOGY GUIDE ---
+When interpreting user queries, be aware of these common medical term synonyms:
+- "blood work", "blood test" = CBC, Complete Blood Count, hemogram
+- "cholesterol" = lipid panel, LDL, HDL, lipids
+- "x-ray", "xray" = radiograph, radiology report
+- "MRI" = magnetic resonance imaging
+- "CT scan" = computed tomography, CAT scan
+- "prescription", "medication", "meds" = Rx, drug, medicine
+- "checkup" = physical exam, doctor visit, annual exam
+--- END TERMINOLOGY GUIDE ---
 
 **User Question:** "${query}"
 
@@ -47,6 +69,25 @@ ${documentContext}
       const jsonString = match ? match[1] : response.text;
 
       const jsonResponse = JSON.parse(jsonString);
+
+      // The AI returns document references (IDs or partial objects)
+      // We need to map them back to the full document objects from our input
+      if (jsonResponse.referencedDocuments && Array.isArray(jsonResponse.referencedDocuments)) {
+        jsonResponse.referencedDocuments = jsonResponse.referencedDocuments
+          .map(ref => {
+            // Try to find the full document by ID or displayName
+            const docId = typeof ref === 'string' ? ref : ref.id;
+            const docName = typeof ref === 'object' ? ref.displayName : null;
+
+            return documents.find(d =>
+              d.id === docId ||
+              d.displayName === docName ||
+              (docName && d.filename === docName)
+            );
+          })
+          .filter(Boolean); // Remove any that weren't found
+      }
+
       return jsonResponse;
     } catch (e) {
       console.error('Error parsing AI answer JSON:', e);
@@ -64,8 +105,19 @@ export async function getAISummary(query, documents = []) {
   const documentContext = documents
     .map(doc => {
       const a = doc.aiAnalysis || {};
-      const keyFindings = (a.keyFindings || []).map(f => `- ${f.finding}: ${f.result}`).join('\n');
-      return `--- DOCUMENT: ${doc.displayName} (Category: ${doc.category}) ---\nSummary: ${a.summary}\nProvider: ${a.provider}\nKey Findings:\n${keyFindings}\n--- END DOCUMENT ---`;
+      const structuredDataStr = a.structuredData
+        ? Object.entries(a.structuredData)
+            .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+            .join('\n')
+        : 'No structured data available';
+
+      return `--- DOCUMENT: ${doc.displayName || doc.filename} (Category: ${doc.category}) ---
+Structured Data:
+${structuredDataStr}
+
+Full Text:
+${a.extractedText || 'No text extracted'}
+--- END DOCUMENT ---`;
     })
     .join('\n\n');
 
@@ -75,6 +127,17 @@ export async function getAISummary(query, documents = []) {
 ${documentContext}
 --- END DOCUMENT CONTEXT ---
 
+--- MEDICAL TERMINOLOGY GUIDE ---
+When interpreting user queries, be aware of these common medical term synonyms:
+- "blood work", "blood test" = CBC, Complete Blood Count, hemogram
+- "cholesterol" = lipid panel, LDL, HDL, lipids
+- "x-ray", "xray" = radiograph, radiology report
+- "MRI" = magnetic resonance imaging
+- "CT scan" = computed tomography, CAT scan
+- "prescription", "medication", "meds" = Rx, drug, medicine
+- "checkup" = physical exam, doctor visit, annual exam
+--- END TERMINOLOGY GUIDE ---
+
 **User Query:** "${query}"
 
 **Instructions:**
@@ -82,7 +145,7 @@ ${documentContext}
 2.  **Generate a Concise Summary:** Based on the relevant documents, write a 1-3 sentence summary that directly addresses the user's query.
 3.  **List Key Documents:** List the top 3-5 most relevant documents with their display name and category.
 4.  **Suggest Follow-up Questions:** Provide 2-3 insightful follow-up questions the user might have.
-5.  **Format the Output:** Return a JSON object with the following structure: { "summary": "...", "documents": [{"id": "...", "displayName": "...", "category": "..."}], "suggestedFollowUps": ["...", "..."] }. The documents should be the full document objects, not just the IDs. Make sure the JSON is valid.
+5.  **Format the Output:** Return a JSON object with the following structure: { "summary": "...", "referencedDocuments": [{"id": "...", "displayName": "...", "category": "..."}], "suggestedFollowUps": ["...", "..."] }. The referencedDocuments should be the full document objects, not just the IDs. Make sure the JSON is valid.
 
 **JSON Response:**`;
 
@@ -98,6 +161,25 @@ ${documentContext}
       const jsonString = match ? match[1] : response.text;
 
       const jsonResponse = JSON.parse(jsonString);
+
+      // The AI returns document references (IDs or partial objects)
+      // We need to map them back to the full document objects from our input
+      if (jsonResponse.referencedDocuments && Array.isArray(jsonResponse.referencedDocuments)) {
+        jsonResponse.referencedDocuments = jsonResponse.referencedDocuments
+          .map(ref => {
+            // Try to find the full document by ID or displayName
+            const docId = typeof ref === 'string' ? ref : ref.id;
+            const docName = typeof ref === 'object' ? ref.displayName : null;
+
+            return documents.find(d =>
+              d.id === docId ||
+              d.displayName === docName ||
+              (docName && d.filename === docName)
+            );
+          })
+          .filter(Boolean); // Remove any that weren't found
+      }
+
       return jsonResponse;
     } catch (e) {
       console.error('Error parsing AI summary JSON:', e);
@@ -109,4 +191,3 @@ ${documentContext}
     throw new Error('Failed to generate AI summary: ' + error.message);
   }
 }
-

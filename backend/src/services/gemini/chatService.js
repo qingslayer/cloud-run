@@ -4,8 +4,19 @@ function createSystemInstruction(documents) {
   const documentContext = documents
     .map(doc => {
       const a = doc.aiAnalysis || {};
-      const keyFindings = (a.keyFindings || []).map(f => `- ${f.finding}: ${f.result}`).join('\n');
-      return `--- DOCUMENT: ${doc.displayName} (Category: ${doc.category}) ---\nSummary: ${a.summary}\nProvider: ${a.provider}\nKey Findings:\n${keyFindings}\n--- END DOCUMENT ---`;
+      const structuredDataStr = a.structuredData
+        ? Object.entries(a.structuredData)
+            .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+            .join('\n')
+        : 'No structured data available';
+
+      return `--- DOCUMENT: ${doc.displayName || doc.filename} (Category: ${doc.category}) ---
+Structured Data:
+${structuredDataStr}
+
+Full Text:
+${a.extractedText || 'No text extracted'}
+--- END DOCUMENT ---`;
     })
     .join('\n\n');
 
@@ -17,7 +28,26 @@ NEVER guess, estimate, or make up medical information.
 If a question is unclear, ask for clarification.
 Always cite specific documents when providing factual information.
 When you reference specific medical documents in your answer, note their IDs.
-Format: After your answer, list referenced document IDs like: [REFS: doc_id_1, doc_id_2]`;
+Format: After your answer, list referenced document IDs like: [REFS: doc_id_1, doc_id_2]
+
+--- DOCUMENT CONTEXT ---
+${documentContext}
+--- END DOCUMENT CONTEXT ---
+
+--- MEDICAL TERMINOLOGY GUIDE ---
+When interpreting user queries, be aware of these common medical term synonyms:
+- "blood work", "blood test" = CBC, Complete Blood Count, hemogram
+- "cholesterol" = lipid panel, LDL, HDL, lipids
+- "x-ray", "xray" = radiograph, radiology report
+- "MRI" = magnetic resonance imaging
+- "CT scan" = computed tomography, CAT scan
+- "prescription", "medication", "meds" = Rx, drug, medicine
+- "checkup" = physical exam, doctor visit, annual exam
+
+When a user asks about "blood work" or "blood test", look for documents containing CBC, Complete Blood Count, or hemogram data.
+When a user asks about "cholesterol", look for lipid panel results with LDL/HDL values.
+When a user asks about imaging like "x-ray" or "MRI", look for corresponding radiology or imaging reports.
+--- END TERMINOLOGY GUIDE ---`;
 }
 
 function parseAIResponse(text) {
@@ -48,7 +78,12 @@ export async function getAIChatResponse(query, documents, history = []) {
   });
 
   const result = await chat.sendMessage({ message: query });
-  const { answer, referencedDocuments } = parseAIResponse(result.text);
+  const { answer, referencedDocuments: docIds } = parseAIResponse(result.text);
+
+  // Map document IDs back to full document objects
+  const referencedDocuments = docIds
+    .map(id => documents.find(d => d.id === id || d.displayName === id || d.filename === id))
+    .filter(Boolean); // Remove any that weren't found
 
   return {
     answer,
@@ -56,4 +91,3 @@ export async function getAIChatResponse(query, documents, history = []) {
     suggestedFollowUps: [], // Suggested follow-ups can be added here
   };
 }
-

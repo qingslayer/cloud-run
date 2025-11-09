@@ -291,3 +291,72 @@ ${extractedText}
   }
 }
 
+/**
+ * Generate a concise search summary for efficient AI querying
+ * This summary is used during search instead of the full extractedText
+ * to dramatically reduce context size and improve performance.
+ *
+ * @param {string} extractedText - Full text extracted from document
+ * @param {string} category - Document category
+ * @param {object} structuredData - Structured data extracted from document
+ * @returns {Promise<string>} Concise search summary (200-500 characters)
+ */
+export async function generateSearchSummary(extractedText, category, structuredData) {
+  console.log(`🔍 Generating search summary for category: ${category}`);
+
+  // Build context from structured data
+  const structuredContext = structuredData && Object.keys(structuredData).length > 0
+    ? JSON.stringify(structuredData, null, 2)
+    : 'No structured data available';
+
+  const prompt = `You are creating a concise search summary for a medical document. This summary will be used by an AI to answer user questions efficiently.
+
+**Document Category:** ${category}
+
+**Structured Data:**
+${structuredContext}
+
+**Full Text (first 3000 chars):**
+${extractedText.substring(0, 3000)}
+
+**Your Task:**
+Create a 200-500 character summary that includes:
+1. Document type and date (if available)
+2. Provider/facility (if available)
+3. Key medical findings, values, or information
+4. Any abnormalities or concerns
+5. Overall conclusion/impression
+
+**Format Guidelines:**
+- Be concise but information-dense
+- Use natural language (not bullet points)
+- Include specific medical values when relevant
+- Mention normal vs abnormal results
+- Make it easy for AI to answer questions like "what's my cholesterol?" or "when was my last checkup?"
+
+**Example for Lab Results:**
+"Complete Blood Count from October 15, 2023 at LabCorp by Dr. Smith. WBC 7.2 (normal), RBC 4.8 (normal), Hemoglobin 14.2 g/dL (normal), Platelets 245k (normal). All values within normal reference ranges. No abnormalities detected. Patient shows healthy blood profile with no concerns."
+
+**Example for Prescription:**
+"Prescription from Dr. Johnson dated March 3, 2024. Lisinopril 10mg once daily for blood pressure management. Metformin 500mg twice daily with meals for diabetes control. 30-day supply with 2 refills available. Take Metformin with food to reduce side effects."
+
+Now create the summary:`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: { parts: [{ text: prompt }] }
+    });
+
+    const summary = response.text.trim();
+    console.log(`✅ Search summary generated (${summary.length} chars)`);
+    return summary;
+  } catch (error) {
+    console.error('❌ Failed to generate search summary:', error);
+    // Fallback: create basic summary from available data
+    const fallback = `${category} document. ${structuredData && Object.keys(structuredData).length > 0 ? 'Contains structured medical data.' : 'No structured data available.'}`;
+    console.log(`⚠️ Using fallback summary: ${fallback}`);
+    return fallback;
+  }
+}
+

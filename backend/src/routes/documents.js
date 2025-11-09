@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Storage } from '@google-cloud/storage';
 import { getAIChatResponse } from '../services/gemini/chatService.js';
 import { getAISummary, getAIAnswer } from '../services/gemini/searchService.js';
-import { extractTextFromDocument, analyzeAndCategorizeDocument, extractStructuredData } from '../services/gemini/documentProcessor.js';
+import { extractTextFromDocument, analyzeAndCategorizeDocument, extractStructuredData, generateSearchSummary } from '../services/gemini/documentProcessor.js';
 import { Firestore, FieldValue } from '@google-cloud/firestore';
 import { analyzeQuery } from '../services/queryAnalyzer.js';
 import sessionCache from '../services/sessionCache.js';
@@ -88,7 +88,7 @@ router.post('/search', async (req, res) => {
 
     const { type, category, keywords, timeRange } = analyzeQuery(query);
 
-    console.log(`Query: "${query}" → Type: ${type}, Category: ${category}, Time: ${timeRange ? timeRange.type : 'none'}`);
+    console.log(`Query: "${query}" → Type: ${type}, Category: ${category}, Keywords: ${JSON.stringify(keywords)}, Time: ${timeRange ? timeRange.type : 'none'}`);
 
     // Helper function to apply time filter only (for direct document queries)
     const applyTimeFilter = (docs) => {
@@ -110,19 +110,26 @@ router.post('/search', async (req, res) => {
 
     // Helper function to filter documents by time range AND keywords (for AI queries)
     const filterDocumentsForAI = (docs) => {
+      console.log(`  Starting with ${docs.length} documents`);
+
       // First apply time filter
       let filtered = applyTimeFilter(docs);
+      console.log(`  After time filter: ${filtered.length} documents`);
 
       // Then apply keyword filter if keywords exist
       if (keywords && keywords.length > 0) {
+        const beforeKeywordFilter = filtered.length;
         filtered = filtered.filter(doc => {
+          const a = doc.aiAnalysis || {};
+
+          // Build searchable text - use searchSummary if available (more efficient)
           const searchableText = [
             doc.filename?.toLowerCase() || '',
             doc.displayName?.toLowerCase() || '',
             doc.category?.toLowerCase() || '',
             doc.notes?.toLowerCase() || '',
-            JSON.stringify(doc.aiAnalysis?.structuredData || {}).toLowerCase(),
-            (doc.aiAnalysis?.extractedText || '').toLowerCase().substring(0, 5000), // First 5000 chars
+            // Use searchSummary if available, otherwise fall back to structured data + extractedText
+            a.searchSummary?.toLowerCase() || JSON.stringify(a.structuredData || {}).toLowerCase() + ' ' + (a.extractedText || '').toLowerCase().substring(0, 2000),
           ].join(' ');
 
           // Each keyword group must have at least one match
@@ -132,6 +139,7 @@ router.post('/search', async (req, res) => {
 
           return allGroupsMatch;
         });
+        console.log(`  After keyword filter: ${filtered.length} documents (filtered out ${beforeKeywordFilter - filtered.length})`);
       }
 
       return filtered;
@@ -139,7 +147,11 @@ router.post('/search', async (req, res) => {
 
     switch (type) {
       case 'documents': {
-        let firestoreQuery = firestore.collection('documents').where('userId', '==', uid);
+        let firestoreQuery = firestore.collection('documents')
+          .where('userId', '==', uid)
+          .orderBy('uploadDate', 'desc')  // Order by most recent first
+          .limit(50);  // Limit to 50 most recent for fast display
+
         if (category) {
           firestoreQuery = firestoreQuery.where('category', '==', category);
         }
@@ -163,7 +175,11 @@ router.post('/search', async (req, res) => {
 // ... (existing code)
 
       case 'summary': {
-        let firestoreQuery = firestore.collection('documents').where('userId', '==', uid);
+        let firestoreQuery = firestore.collection('documents')
+          .where('userId', '==', uid)
+          .orderBy('uploadDate', 'desc')  // Order by most recent first
+          .limit(15);  // Limit to 15 most recent for AI summary
+
         if (category) {
           firestoreQuery = firestoreQuery.where('category', '==', category);
         }
@@ -177,7 +193,11 @@ router.post('/search', async (req, res) => {
         return res.json({ type: 'summary', query, ...summaryResult });
       }
       case 'answer': {
-        let firestoreQuery = firestore.collection('documents').where('userId', '==', uid);
+        let firestoreQuery = firestore.collection('documents')
+          .where('userId', '==', uid)
+          .orderBy('uploadDate', 'desc')  // Order by most recent first
+          .limit(10);  // Limit to 10 most recent for AI answers
+
         if (category) {
           firestoreQuery = firestoreQuery.where('category', '==', category);
         }
@@ -286,6 +306,12 @@ async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
     console.log('Structured data extraction complete.');
     console.log('  Result keys:', Object.keys(structuredData || {}));
 
+    // Generate search summary (for efficient AI querying)
+    console.log('Generating search summary...');
+    const searchSummary = await generateSearchSummary(extractedText, categorization.category, structuredData);
+    console.log('Search summary generated.');
+    console.log(`  Summary length: ${searchSummary.length} characters`);
+
     // Update document with analysis results
     const analysisResults = {
       displayName: categorization.title,
@@ -294,6 +320,7 @@ async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
         extractedText: extractedText,
         category: categorization.category,
         structuredData: structuredData,
+        searchSummary: searchSummary,  // NEW: Concise summary for search
       },
       status: 'complete',
       analyzedAt: FieldValue.serverTimestamp(),
@@ -603,13 +630,18 @@ router.post('/:id/analyze', async (req, res) => {
       const structuredData = await extractStructuredData(extractedText, categorization.category);
       console.log('Structured data extraction complete.');
 
+      console.log('Generating search summary...');
+      const searchSummary = await generateSearchSummary(extractedText, categorization.category, structuredData);
+      console.log('Search summary generated.');
+
       analysisResults = {
         displayName: categorization.title,
         category: categorization.category,
         aiAnalysis: {
           extractedText: extractedText,
           category: categorization.category,
-          structuredData: structuredData, // Contains fields like dateOfService, provider, keyFindings, summary
+          structuredData: structuredData,
+          searchSummary: searchSummary,  // NEW: Concise summary for search
         },
         status: 'complete', // Mark as complete after successful analysis
         analyzedAt: FieldValue.serverTimestamp(),

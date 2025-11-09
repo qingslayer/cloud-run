@@ -15,6 +15,16 @@ export async function getAIAnswer(query, documents = []) {
   const documentContext = documents
     .map(doc => {
       const a = doc.aiAnalysis || {};
+
+      // Use searchSummary if available (much more efficient)
+      // Fallback to structured data + extractedText for old documents
+      if (a.searchSummary) {
+        return `--- DOCUMENT: ${doc.displayName || doc.filename} ---
+${a.searchSummary}
+--- END DOCUMENT ---`;
+      }
+
+      // Fallback for documents without searchSummary (old format)
       const structuredDataStr = a.structuredData
         ? Object.entries(a.structuredData)
             .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
@@ -25,8 +35,8 @@ export async function getAIAnswer(query, documents = []) {
 Structured Data:
 ${structuredDataStr}
 
-Full Text:
-${a.extractedText || 'No text extracted'}
+Full Text (first 1000 chars):
+${(a.extractedText || 'No text extracted').substring(0, 1000)}
 --- END DOCUMENT ---`;
     })
     .join('\n\n');
@@ -105,6 +115,16 @@ export async function getAISummary(query, documents = []) {
   const documentContext = documents
     .map(doc => {
       const a = doc.aiAnalysis || {};
+
+      // Use searchSummary if available (much more efficient)
+      // Fallback to structured data + extractedText for old documents
+      if (a.searchSummary) {
+        return `--- DOCUMENT: ${doc.displayName || doc.filename} ---
+${a.searchSummary}
+--- END DOCUMENT ---`;
+      }
+
+      // Fallback for documents without searchSummary (old format)
       const structuredDataStr = a.structuredData
         ? Object.entries(a.structuredData)
             .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
@@ -115,8 +135,8 @@ export async function getAISummary(query, documents = []) {
 Structured Data:
 ${structuredDataStr}
 
-Full Text:
-${a.extractedText || 'No text extracted'}
+Full Text (first 1000 chars):
+${(a.extractedText || 'No text extracted').substring(0, 1000)}
 --- END DOCUMENT ---`;
     })
     .join('\n\n');

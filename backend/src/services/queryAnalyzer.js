@@ -86,6 +86,13 @@ function extractKeywords(query) {
   let remainingQuery = query.toLowerCase();
   const keywordGroups = [];
 
+  // Remove question words and action words - they're not content to search for
+  const wordsToRemove = [...QUESTION_WORDS, ...ACTION_WORDS, 'my', 'the', 'a', 'an', 'is', 'are', 'was', 'were'];
+  wordsToRemove.forEach(word => {
+    // Use word boundaries to avoid partial matches
+    remainingQuery = remainingQuery.replace(new RegExp(`\\b${word}\\b`, 'g'), ' ');
+  });
+
   // Sort synonym keys by length (longest first) to match phrases before individual words
   const sortedSynonymKeys = Object.keys(SYNONYM_MAP).sort((a, b) => b.length - a.length);
 
@@ -96,7 +103,7 @@ function extractKeywords(query) {
     }
   });
 
-  // Add remaining individual keywords
+  // Add remaining individual keywords (only if length > 2)
   const remainingKeywords = remainingQuery.trim().split(/\s+/).filter(kw => kw.length > 2);
   remainingKeywords.forEach(kw => {
     keywordGroups.push([kw]);

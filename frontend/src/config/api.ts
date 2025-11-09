@@ -27,10 +27,6 @@ export async function getAuthToken(forceRefresh: boolean = false): Promise<strin
     // Cached tokens are valid for 1 hour and automatically refreshed by Firebase
     const token = await user.getIdToken(forceRefresh);
 
-    if (import.meta.env.DEV) {
-      console.log('Got auth token for user:', user.email, forceRefresh ? '(forced refresh)' : '(cached)');
-    }
-
     return token;
   } catch (error) {
     console.error('Error getting auth token:', error);
@@ -69,10 +65,6 @@ export async function apiRequest(
 
   // If we get 401 Unauthorized, try once more with a fresh token
   if (response.status === 401) {
-    if (import.meta.env.DEV) {
-      console.log('Got 401, retrying with fresh token...');
-    }
-
     token = await getAuthToken(true); // Force refresh
 
     if (token) {
@@ -131,10 +123,6 @@ export async function apiFormRequest(
 
   // If we get 401 Unauthorized, try once more with a fresh token
   if (response.status === 401) {
-    if (import.meta.env.DEV) {
-      console.log('Got 401 on form request, retrying with fresh token...');
-    }
-
     token = await getAuthToken(true); // Force refresh
 
     if (token) {

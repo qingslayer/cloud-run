@@ -146,16 +146,8 @@ const App: React.FC = () => {
   }, [selectedDocumentData]);
 
   const handleSelectDocument = useCallback(async (id: string) => {
-    console.log('🔍 handleSelectDocument called with id:', id);
-    console.log('   - isLoadingDocumentRef:', isLoadingDocumentRef.current);
-    console.log('   - lastSelectedDocumentIdRef:', lastSelectedDocumentIdRef.current);
-    console.log('   - selectedDocumentIdRef:', selectedDocumentIdRef.current);
-    console.log('   - reviewingDocumentIdRef:', reviewingDocumentIdRef.current);
-    console.log('   - selectedDocumentDataRef?.id:', selectedDocumentDataRef.current?.id);
-
     // Prevent multiple simultaneous calls
     if (isLoadingDocumentRef.current) {
-      console.log('❌ Document already loading, skipping:', id);
       return;
     }
 
@@ -165,19 +157,14 @@ const App: React.FC = () => {
       selectedDocumentDataRef.current?.id === id;
 
     if (isCurrentlyDisplayed) {
-      console.log('❌ Document already displayed, skipping:', id);
       return;
     }
 
-    console.log('✅ Proceeding to load document:', id);
     isLoadingDocumentRef.current = true;
     lastSelectedDocumentIdRef.current = id;
 
     try {
       const fullDoc = await getDocument(id);
-      console.log('📄 Document fetched successfully:', fullDoc.id);
-      console.log('   - Document status:', fullDoc.status);
-      console.log('   - Document category:', fullDoc.category);
 
       // Update refs synchronously before setting state
       selectedDocumentDataRef.current = fullDoc;
@@ -185,25 +172,18 @@ const App: React.FC = () => {
       setSelectedDocumentData(fullDoc);
 
       if (fullDoc.status === 'review') {
-        console.log('   - Setting as reviewing document');
         reviewingDocumentIdRef.current = id;
         selectedDocumentIdRef.current = null;
         setReviewingDocumentId(id);
         setSelectedDocumentId(null);
       } else if (fullDoc.status === 'complete') {
-        console.log('   - Setting as selected document');
         selectedDocumentIdRef.current = id;
         reviewingDocumentIdRef.current = null;
         setSelectedDocumentId(id);
         setReviewingDocumentId(null);
-      } else {
-        console.warn('   - ⚠️ Unknown document status:', fullDoc.status);
       }
-
-      console.log('   - After setState - selectedDocumentIdRef:', selectedDocumentIdRef.current);
-      console.log('   - After setState - reviewingDocumentIdRef:', reviewingDocumentIdRef.current);
     } catch (error) {
-      console.error("❌ Error fetching document details:", error);
+      console.error("Error fetching document:", error);
       // Clear refs on error so user can retry
       selectedDocumentDataRef.current = null;
       lastSelectedDocumentIdRef.current = null;

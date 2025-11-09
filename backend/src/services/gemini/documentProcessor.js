@@ -152,21 +152,25 @@ function getResponseSchemaForCategory(category) {
         required: ['procedure', 'findings', 'impression']
       };
     default:
+      // Flexible schema for any document type
+      // Gemini API requires non-empty properties for OBJECT type, so we use an array of key-value pairs
+      // This will be transformed to a flat object after extraction
       return {
         type: Type.OBJECT,
         properties: {
-          keyDetails: {
+          details: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
-                key: { type: Type.STRING },
-                value: { type: Type.STRING },
+                key: { type: Type.STRING, description: 'Field name (e.g., "Patient Name", "Visit Date")' },
+                value: { type: Type.STRING, description: 'Field value' },
               },
               required: ['key', 'value']
             }
           }
-        }
+        },
+        required: ['details']
       };
   }
 }
@@ -178,16 +182,41 @@ function getResponseSchemaForCategory(category) {
  * @returns {Promise<object>} Structured data
  */
 export async function extractStructuredData(extractedText, category) {
+  console.log(`\n========================================`);
+  console.log(`📊 STARTING DATA EXTRACTION`);
+  console.log(`========================================`);
+
   if (!extractedText) {
+    console.error('❌ No text available to parse');
     return { error: 'No text available to parse.' };
   }
 
+  console.log(`📊 Category: "${category}"`);
+  console.log(`📊 Text length: ${extractedText.length} characters`);
+
   const schema = getResponseSchemaForCategory(category);
+  console.log(`📊 Schema generated:`, JSON.stringify(schema, null, 2));
+
+  // Special instructions for flexible categories
+  const isFlexibleCategory = !['Lab Results', 'Prescriptions', 'Imaging Reports'].includes(category);
+  const flexibleInstructions = isFlexibleCategory ? `
+
+**OUTPUT FORMAT FOR THIS CATEGORY:**
+Return a JSON object with a "details" array containing key-value pairs for each piece of information.
+Example: { "details": [
+  { "key": "Patient Name", "value": "John Doe" },
+  { "key": "Visit Date", "value": "January 15, 2024" },
+  { "key": "Chief Complaint", "value": "Headache" },
+  { "key": "Provider", "value": "Dr. Smith" }
+]}
+
+Use clear, human-readable field names in the "key" property. Extract each distinct piece of information as a separate object in the details array.
+` : '';
 
   const prompt = `You are an expert medical data extraction specialist. Your task is to parse the provided medical document text and extract ALL clinically relevant information into a structured JSON object.
 
 **Document Type:** "${category}"
-
+${flexibleInstructions}
 **Guiding Principle:** If it helps a patient or doctor understand the medical record, extract it. If it's purely administrative or logistical information (other than provider/doctor names), skip it.
 
 **Extraction Rules:**
@@ -217,6 +246,9 @@ ${extractedText}
 `;
 
   try {
+    console.log(`📊 Calling Gemini API...`);
+    console.log(`📊 Flexible category: ${isFlexibleCategory}`);
+
     const response = await ai.models.generateContent({
       model,
       contents: { parts: [{ text: prompt }] },
@@ -226,9 +258,35 @@ ${extractedText}
       },
     });
 
-    return JSON.parse(response.text);
+    console.log(`✅ Gemini API responded`);
+    console.log(`📊 Raw response length:`, response.text?.length || 0);
+    console.log(`📊 Raw response (first 500 chars):`, response.text?.substring(0, 500));
+
+    const parsedData = JSON.parse(response.text);
+    console.log(`✅ JSON parsed successfully`);
+    console.log(`📊 Result keys:`, Object.keys(parsedData));
+    console.log(`📊 Result preview:`, JSON.stringify(parsedData, null, 2).substring(0, 500));
+
+    // Transform flexible category data from array to flat object
+    if (isFlexibleCategory && parsedData.details && Array.isArray(parsedData.details)) {
+      console.log(`📊 Transforming details array to flat object...`);
+      const flatObject = parsedData.details.reduce((acc, item) => {
+        if (item.key && item.value) {
+          acc[item.key] = item.value;
+        }
+        return acc;
+      }, {});
+      console.log(`✅ Transformed to flat object with keys:`, Object.keys(flatObject));
+      return flatObject;
+    }
+
+    return parsedData;
   } catch (error) {
-    console.error('Gemini structured data extraction failed:', error);
+    console.error(`\n❌❌❌ DATA EXTRACTION FAILED ❌❌❌`);
+    console.error(`❌ Error type: ${error.constructor.name}`);
+    console.error(`❌ Error message:`, error.message);
+    console.error(`❌ Full error:`, error);
+    console.error(`❌ Stack trace:`, error.stack);
     return { error: 'Could not parse structured data from this document.' };
   }
 }

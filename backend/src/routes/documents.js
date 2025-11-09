@@ -240,8 +240,11 @@ async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
 
     // Extract structured data
     console.log('Extracting structured data...');
+    console.log(`  Category: "${categorization.category}"`);
+    console.log(`  Text length: ${extractedText.length} characters`);
     const structuredData = await extractStructuredData(extractedText, categorization.category);
     console.log('Structured data extraction complete.');
+    console.log('  Result keys:', Object.keys(structuredData || {}));
 
     // Update document with analysis results
     const analysisResults = {

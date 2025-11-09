@@ -3,12 +3,18 @@ import { DocumentFile, DocumentCategory } from '../types';
 import { formatRelativeTime } from '../utils/formatters';
 import { categoryInfoMap } from '../utils/category-info';
 import { EmptyDashboard } from './illustrations/EmptyDashboard';
+import { UploadIcon } from './icons/UploadIcon';
+import { SparklesIcon } from './icons/SparklesIcon';
+import { ShieldCheckIcon } from './icons/ShieldCheckIcon';
+import { ClockIcon } from './icons/ClockIcon';
+import LoadingSpinner from './LoadingSpinner';
 
 
 interface DashboardProps {
   documents: DocumentFile[];
   onNavigateToRecords: (category: DocumentCategory) => void;
   onSelectDocument: (id: string) => void;
+  onUploadClick?: () => void;
 }
 
 const ALL_CATEGORIES: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
@@ -58,7 +64,7 @@ const RecentDocumentItem: React.FC<{ document: DocumentFile, onSelect: (id: stri
 }
 
 
-const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, onSelectDocument }) => {
+const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, onSelectDocument, onUploadClick, isLoading = false }) => {
     
     const categoryStats = useMemo(() => {
         const stats = documents.reduce((acc, doc) => {
@@ -85,8 +91,12 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
     return (
     <div className="h-full pt-28 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            
-            {documents.length > 0 ? (
+
+            {isLoading ? (
+                <div className="flex justify-center py-20">
+                    <LoadingSpinner size="lg" text="Loading your health records..." />
+                </div>
+            ) : documents.length > 0 ? (
                 <div className="space-y-8">
                     {/* Category Breakdown */}
                     <section>
@@ -111,10 +121,68 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
                     )}
                 </div>
             ) : (
-                <div className="text-center py-16">
-                  <EmptyDashboard className="max-w-sm mx-auto" />
-                  <h2 className="mt-8 text-2xl font-bold text-slate-800 dark:text-white">Your Health Vault is ready</h2>
-                  <p className="mt-2 text-slate-500 dark:text-slate-400 max-w-lg mx-auto">Upload your first medical record to get started. Health Vault will help you organize and understand your health history.</p>
+                <div className="text-center py-8 max-w-4xl mx-auto">
+                  <EmptyDashboard className="max-w-md mx-auto mb-8" />
+
+                  {/* Welcome Message */}
+                  <div className="mb-10">
+                    <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-3">Welcome to Health Vault</h2>
+                    <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+                      Your secure, AI-powered health record manager. Get started by uploading your first document.
+                    </p>
+                  </div>
+
+                  {/* Upload Button */}
+                  {onUploadClick && (
+                    <button
+                      onClick={onUploadClick}
+                      className="inline-flex items-center justify-center px-8 py-4 bg-teal-600 text-white text-lg font-semibold rounded-xl shadow-lg shadow-teal-500/30 hover:bg-teal-700 transition-all transform hover:scale-105 mb-12"
+                    >
+                      <UploadIcon className="w-6 h-6 mr-3" />
+                      Upload Your First Record
+                    </button>
+                  )}
+
+                  {/* Getting Started Guide */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+                    <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700 rounded-2xl p-6 text-left">
+                      <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-4">
+                        <UploadIcon className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">1. Upload Documents</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Drop any medical document - lab results, prescriptions, imaging reports, or doctor's notes. We support PDF and images.
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700 rounded-2xl p-6 text-left">
+                      <div className="w-12 h-12 bg-teal-100 dark:bg-teal-900/30 rounded-xl flex items-center justify-center mb-4">
+                        <SparklesIcon className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">2. AI Organizes</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Our AI automatically categorizes documents and extracts key information like test results, medications, and dates.
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700 rounded-2xl p-6 text-left">
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-4">
+                        <SparklesIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">3. Search & Understand</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Ask questions like "What were my cholesterol levels?" and get instant AI-powered answers from your records.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Privacy Note */}
+                  <div className="mt-12 flex items-start justify-center space-x-3 text-left max-w-2xl mx-auto bg-slate-100 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                    <ShieldCheckIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      <strong className="text-slate-800 dark:text-slate-200">Your privacy is protected.</strong> All documents are encrypted and stored securely. Only you can access your health data.
+                    </p>
+                  </div>
                 </div>
             )}
 

@@ -22,6 +22,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView 
 
   const { icon: CategoryIcon, color, lightColor } = categoryInfo || categoryInfoMap['Other'];
   const isForReview = document.status === 'review';
+  const hasAiAnalysis = !!document.aiAnalysis;
+  const isProcessing = isForReview && !hasAiAnalysis;
   const snippet = generateSnippet(document);
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -32,6 +34,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView 
     if (isButton || isLink) {
         return;
     }
+
+    // Prevent opening documents that are still processing
+    if (isProcessing) {
+      return;
+    }
+
     onView(document.id);
   };
 
@@ -41,7 +49,10 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView 
       className={`group relative flex items-center p-4 rounded-2xl shadow-sm transition-all duration-300 border
           bg-white dark:bg-slate-800/50
           border-stone-200/80 dark:border-slate-800
-          cursor-pointer hover:shadow-md hover:border-teal-400/80 dark:hover:border-teal-500/80 hover:bg-stone-50/50 dark:hover:bg-slate-800
+          ${isProcessing
+            ? 'cursor-wait opacity-75'
+            : 'cursor-pointer hover:shadow-md hover:border-teal-400/80 dark:hover:border-teal-500/80 hover:bg-stone-50/50 dark:hover:bg-slate-800'
+          }
           ${isForReview ? 'border-amber-500/60' : ''}`}
     >
       <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mr-4 ${lightColor}`}>
@@ -59,9 +70,21 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView 
 
       <div className="flex-shrink-0 ml-4 flex items-center space-x-4">
         {isForReview && (
-            <button onClick={() => onView(document.id)} className="px-3 py-1.5 text-sm font-semibold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors shadow-md shadow-amber-500/20">
+          <>
+            {isProcessing ? (
+              <div className="flex items-center space-x-2 px-3 py-1.5 text-sm font-semibold text-slate-600 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-500 border-t-transparent" />
+                <span>AI Processing...</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => onView(document.id)}
+                className="px-3 py-1.5 text-sm font-semibold text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors shadow-md shadow-amber-500/20"
+              >
                 Review & Save
-            </button>
+              </button>
+            )}
+          </>
         )}
         {!isForReview && (
             <>

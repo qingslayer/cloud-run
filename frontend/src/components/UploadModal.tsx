@@ -8,9 +8,16 @@ interface UploadModalProps {
   onClose: () => void;
   onFilesChange: (files: DocumentFile[]) => void;
   onUpdateDocument: (id: string, updates: Partial<DocumentFile>) => void;
+  onError?: (message: string) => void;
 }
 
-const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onFilesChange, onUpdateDocument }) => {
+const UploadModal: React.FC<UploadModalProps> = ({
+  isOpen,
+  onClose,
+  onFilesChange,
+  onUpdateDocument,
+  onError
+}) => {
 
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
@@ -26,6 +33,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onFilesChang
       window.removeEventListener('keydown', handleEsc);
     };
   }, [isOpen, onClose]);
+
+  const handleUploadStart = () => {
+    // Auto-close modal after file selection
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  };
 
   if (!isOpen) {
     return null;
@@ -50,8 +64,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onFilesChang
 
         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">Upload New Record</h2>
         <p className="text-slate-500 dark:text-slate-400 mb-6">Drop your file below. The AI will automatically suggest a title and category for you to review.</p>
-        
-        <DocumentUploader onFilesChange={onFilesChange} onUpdateDocument={onUpdateDocument} />
+
+        <DocumentUploader
+          onFilesChange={onFilesChange}
+          onUpdateDocument={onUpdateDocument}
+          onUploadStart={handleUploadStart}
+          onError={onError}
+        />
       </div>
     </div>
   );

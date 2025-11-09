@@ -16,27 +16,17 @@ export async function getAIAnswer(query, documents = []) {
     .map(doc => {
       const a = doc.aiAnalysis || {};
 
-      // Use searchSummary if available (much more efficient)
-      // Fallback to structured data + extractedText for old documents
-      if (a.searchSummary) {
-        return `--- DOCUMENT: ${doc.displayName || doc.filename} ---
-${a.searchSummary}
---- END DOCUMENT ---`;
-      }
-
-      // Fallback for documents without searchSummary (old format)
-      const structuredDataStr = a.structuredData
+      // Build structured data string (for precise lookups)
+      const structuredDataStr = a.structuredData && Object.keys(a.structuredData).length > 0
         ? Object.entries(a.structuredData)
             .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
             .join('\n')
-        : 'No structured data available';
+        : null;
 
-      return `--- DOCUMENT: ${doc.displayName || doc.filename} (Category: ${doc.category}) ---
-Structured Data:
-${structuredDataStr}
-
-Full Text (first 1000 chars):
-${(a.extractedText || 'No text extracted').substring(0, 1000)}
+      // Build context from searchSummary (overview) + structuredData (precision)
+      return `--- DOCUMENT: ${doc.displayName || doc.filename} ---
+Summary: ${a.searchSummary || 'No summary available'}
+${structuredDataStr ? '\nDetailed Values:\n' + structuredDataStr : ''}
 --- END DOCUMENT ---`;
     })
     .join('\n\n');
@@ -116,27 +106,17 @@ export async function getAISummary(query, documents = []) {
     .map(doc => {
       const a = doc.aiAnalysis || {};
 
-      // Use searchSummary if available (much more efficient)
-      // Fallback to structured data + extractedText for old documents
-      if (a.searchSummary) {
-        return `--- DOCUMENT: ${doc.displayName || doc.filename} ---
-${a.searchSummary}
---- END DOCUMENT ---`;
-      }
-
-      // Fallback for documents without searchSummary (old format)
-      const structuredDataStr = a.structuredData
+      // Build structured data string (for precise lookups)
+      const structuredDataStr = a.structuredData && Object.keys(a.structuredData).length > 0
         ? Object.entries(a.structuredData)
             .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
             .join('\n')
-        : 'No structured data available';
+        : null;
 
-      return `--- DOCUMENT: ${doc.displayName || doc.filename} (Category: ${doc.category}) ---
-Structured Data:
-${structuredDataStr}
-
-Full Text (first 1000 chars):
-${(a.extractedText || 'No text extracted').substring(0, 1000)}
+      // Build context from searchSummary (overview) + structuredData (precision)
+      return `--- DOCUMENT: ${doc.displayName || doc.filename} ---
+Summary: ${a.searchSummary || 'No summary available'}
+${structuredDataStr ? '\nDetailed Values:\n' + structuredDataStr : ''}
 --- END DOCUMENT ---`;
     })
     .join('\n\n');

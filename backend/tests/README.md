@@ -47,6 +47,7 @@ Before running tests, ensure:
 
 1. **Backend setup complete**: Follow the [main README](../../README.md#backend-setup) to configure `.env` and verify connections
 2. **Firebase Emulators running**: `firebase emulators:start`
+   - **Note**: Firebase Admin SDK automatically detects the emulator when `FIREBASE_AUTH_EMULATOR_HOST=localhost:9099` is set in `backend/.env`. Comment it out when not using the emulator.
 3. **Backend Server running**: `npm run dev` (in `backend/` directory)
 4. **Test User created**: In the Auth Emulator UI (http://localhost:9000):
    - Email: `test@example.com`
@@ -201,7 +202,8 @@ node tests/documents/analyze-document.test.js ~/Downloads/sample-lab-report.pdf
 - Uploads the specified file to create a new document
 - Triggers AI analysis via the `/api/documents/:id/analyze` endpoint
 - Verifies that AI-generated data is correctly added to the document's metadata in Firestore
-- Checks for `displayName`, `category`, `extractedText`, `aiAnalysis`, and `analyzedAt` fields
+- Displays all structured data fields extracted from the document, and the generated summary
+
 
 ---
 

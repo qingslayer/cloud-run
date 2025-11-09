@@ -15,7 +15,9 @@ const authMiddleware = async (req, res, next) => {
   const idToken = authHeader.split('Bearer ')[1];
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    // When using Firebase Auth Emulator, verifyIdToken will automatically handle emulator tokens
+    // The FIREBASE_AUTH_EMULATOR_HOST env var tells the SDK to use the emulator
+    const decodedToken = await admin.auth().verifyIdToken(idToken, false);
     req.user = decodedToken;
     next();
   } catch (error) {

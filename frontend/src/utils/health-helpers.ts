@@ -37,8 +37,8 @@ export const generateSnippet = (document: DocumentFile): string | null => {
                 return document.aiAnalysis.structuredData.impression ? `Impression: ${document.aiAnalysis.structuredData.impression}` : 'No impression found.';
             
             default:
-                if (document.aiAnalysis.extractedText) {
-                    return document.aiAnalysis.extractedText.substring(0, 100).replace(/\s+/g, ' ') + '...';
+                if (document.aiAnalysis.searchSummary) {
+                    return document.aiAnalysis.searchSummary.substring(0, 100).replace(/\s+/g, ' ') + '...';
                 }
                 return null;
         }

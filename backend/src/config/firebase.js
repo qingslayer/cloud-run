@@ -47,6 +47,12 @@ if (!admin.apps.length) {
     credential,
     storageBucket,
   });
+
+  // Configure Auth Emulator if environment variable is set
+  if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    console.log(`🔧 Using Firebase Auth Emulator at ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
+    // No need to call connectAuthEmulator - the env var is automatically detected by Firebase Admin SDK
+  }
 }
 
 export default admin;

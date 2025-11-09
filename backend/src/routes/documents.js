@@ -122,14 +122,14 @@ router.post('/search', async (req, res) => {
         filtered = filtered.filter(doc => {
           const a = doc.aiAnalysis || {};
 
-          // Build searchable text - use searchSummary if available (more efficient)
+          // Build searchable text from metadata, summary, and structured data
           const searchableText = [
             doc.filename?.toLowerCase() || '',
             doc.displayName?.toLowerCase() || '',
             doc.category?.toLowerCase() || '',
             doc.notes?.toLowerCase() || '',
-            // Use searchSummary if available, otherwise fall back to structured data + extractedText
-            a.searchSummary?.toLowerCase() || JSON.stringify(a.structuredData || {}).toLowerCase() + ' ' + (a.extractedText || '').toLowerCase().substring(0, 2000),
+            a.searchSummary?.toLowerCase() || '',
+            JSON.stringify(a.structuredData || {}).toLowerCase(),
           ].join(' ');
 
           // Each keyword group must have at least one match
@@ -317,10 +317,9 @@ async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
       displayName: categorization.title,
       category: categorization.category,
       aiAnalysis: {
-        extractedText: extractedText,
         category: categorization.category,
         structuredData: structuredData,
-        searchSummary: searchSummary,  // NEW: Concise summary for search
+        searchSummary: searchSummary,  // Concise summary for efficient AI search
       },
       status: 'complete',
       analyzedAt: FieldValue.serverTimestamp(),
@@ -638,10 +637,9 @@ router.post('/:id/analyze', async (req, res) => {
         displayName: categorization.title,
         category: categorization.category,
         aiAnalysis: {
-          extractedText: extractedText,
           category: categorization.category,
           structuredData: structuredData,
-          searchSummary: searchSummary,  // NEW: Concise summary for search
+          searchSummary: searchSummary,  // Concise summary for efficient AI search
         },
         status: 'complete', // Mark as complete after successful analysis
         analyzedAt: FieldValue.serverTimestamp(),

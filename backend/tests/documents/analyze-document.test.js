@@ -72,20 +72,26 @@ async function testAnalyzeDocument() {
       console.log(`   - category: "${analysisData.category}"`);
     }
 
-    if (!analysisData.extractedText) {
-      console.error('❌ Verification failed: extractedText is missing.');
-      verificationPassed = false;
-    } else {
-      console.log(`   - extractedText: (length: ${analysisData.extractedText.length})`);
-    }
-
     if (!analysisData.aiAnalysis) {
       console.error('❌ Verification failed: aiAnalysis object is missing.');
       verificationPassed = false;
     } else {
       console.log('   - aiAnalysis object is present.');
+
+      if (!analysisData.aiAnalysis.searchSummary) {
+        console.error('❌ Verification failed: searchSummary is missing.');
+        verificationPassed = false;
+      } else {
+        console.log(`   - searchSummary: (length: ${analysisData.aiAnalysis.searchSummary.length})`);
+      }
+
+      // Display structured data fields
+      if (analysisData.aiAnalysis.structuredData) {
+        const keys = Object.keys(analysisData.aiAnalysis.structuredData);
+        console.log(`   - structuredData fields: ${keys.join(', ')}`);
+      }
     }
-    
+
     if (!analysisData.analyzedAt) {
       console.error('❌ Verification failed: analyzedAt timestamp is missing.');
       verificationPassed = false;
@@ -95,6 +101,12 @@ async function testAnalyzeDocument() {
 
     if (verificationPassed) {
       console.log('\n🎉 All tests passed! The analyze feature is working correctly.');
+
+      // Display the full search summary for review
+      console.log('\n📄 Generated Search Summary:');
+      console.log('='.repeat(80));
+      console.log(analysisData.aiAnalysis.searchSummary);
+      console.log('='.repeat(80));
     } else {
       throw new Error('Some verifications failed. See logs above.');
     }

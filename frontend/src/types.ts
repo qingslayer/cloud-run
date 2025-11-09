@@ -11,9 +11,9 @@ export interface DocumentFile {
 
   // AI analysis results (only present after analysis completes)
   aiAnalysis?: {
-    extractedText: string;
     category: string;
     structuredData: Record<string, any>;
+    searchSummary: string;
   };
 }
 

@@ -54,10 +54,10 @@ const Records: React.FC<RecordsProps> = ({
     const sortedAndFilteredDocuments = useMemo(() => {
         const lowercasedSearchTerm = searchTerm.toLowerCase();
         const filtered = documents.filter(doc => {
-            const matchesSearch = 
+            const matchesSearch =
                 (doc.displayName || '').toLowerCase().includes(lowercasedSearchTerm) ||
-                (doc.aiAnalysis?.extractedText || '').toLowerCase().includes(lowercasedSearchTerm) ||
-                (doc.aiAnalysis?.structuredData && Object.values(doc.aiAnalysis.structuredData).some(value => 
+                (doc.aiAnalysis?.searchSummary || '').toLowerCase().includes(lowercasedSearchTerm) ||
+                (doc.aiAnalysis?.structuredData && Object.values(doc.aiAnalysis.structuredData).some(value =>
                     String(value).toLowerCase().includes(lowercasedSearchTerm)
                 ));
             

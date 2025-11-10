@@ -187,22 +187,12 @@ function getResponseSchemaForCategory(category) {
  * @returns {Promise<object>} Structured data
  */
 export async function extractStructuredData(extractedText, category) {
-  console.log(`\n========================================`);
-  console.log(`📊 STARTING DATA EXTRACTION`);
-  console.log(`========================================`);
-
   if (!extractedText) {
-    console.error('❌ No text available to parse');
     return { error: 'No text available to parse.' };
   }
 
-  console.log(`📊 Category: "${category}"`);
-  console.log(`📊 Text length: ${extractedText.length} characters`);
-
   const schema = getResponseSchemaForCategory(category);
-  console.log(`📊 Schema generated:`, JSON.stringify(schema, null, 2));
 
-  // Special instructions for flexible categories
   const isFlexibleCategory = !['Lab Results', 'Prescriptions', 'Imaging Reports'].includes(category);
   const flexibleInstructions = isFlexibleCategory ? `
 
@@ -251,9 +241,6 @@ ${extractedText}
 `;
 
   try {
-    console.log(`📊 Calling Gemini API...`);
-    console.log(`📊 Flexible category: ${isFlexibleCategory}`);
-
     const response = await ai.models.generateContent({
       model,
       contents: { parts: [{ text: prompt }] },
@@ -263,35 +250,21 @@ ${extractedText}
       },
     });
 
-    console.log(`✅ Gemini API responded`);
-    console.log(`📊 Raw response length:`, response.text?.length || 0);
-    console.log(`📊 Raw response (first 500 chars):`, response.text?.substring(0, 500));
-
     const parsedData = JSON.parse(response.text);
-    console.log(`✅ JSON parsed successfully`);
-    console.log(`📊 Result keys:`, Object.keys(parsedData));
-    console.log(`📊 Result preview:`, JSON.stringify(parsedData, null, 2).substring(0, 500));
 
-    // Transform flexible category data from array to flat object
     if (isFlexibleCategory && parsedData.details && Array.isArray(parsedData.details)) {
-      console.log(`📊 Transforming details array to flat object...`);
       const flatObject = parsedData.details.reduce((acc, item) => {
         if (item.key && item.value) {
           acc[item.key] = item.value;
         }
         return acc;
       }, {});
-      console.log(`✅ Transformed to flat object with keys:`, Object.keys(flatObject));
       return flatObject;
     }
 
     return parsedData;
   } catch (error) {
-    console.error(`\n❌❌❌ DATA EXTRACTION FAILED ❌❌❌`);
-    console.error(`❌ Error type: ${error.constructor.name}`);
-    console.error(`❌ Error message:`, error.message);
-    console.error(`❌ Full error:`, error);
-    console.error(`❌ Stack trace:`, error.stack);
+    console.error('❌ Data extraction failed:', error.message);
     return { error: 'Could not parse structured data from this document.' };
   }
 }
@@ -307,8 +280,6 @@ ${extractedText}
  * @returns {Promise<string>} Concise search summary (200-500 characters)
  */
 export async function generateSearchSummary(extractedText, category, structuredData) {
-  console.log(`🔍 Generating search summary for category: ${category}`);
-
   // Build context from structured data
   const structuredContext = structuredData && Object.keys(structuredData).length > 0
     ? JSON.stringify(structuredData, null, 2)
@@ -358,15 +329,10 @@ Now create the summary:`;
       contents: { parts: [{ text: prompt }] }
     });
 
-    const summary = response.text.trim();
-    console.log(`✅ Search summary generated (${summary.length} chars)`);
-    return summary;
+    return response.text.trim();
   } catch (error) {
     console.error('❌ Failed to generate search summary:', error);
-    // Fallback: create basic summary from available data
-    const fallback = `${category} document. ${structuredData && Object.keys(structuredData).length > 0 ? 'Contains structured medical data.' : 'No structured data available.'}`;
-    console.log(`⚠️ Using fallback summary: ${fallback}`);
-    return fallback;
+    return `${category} document. ${structuredData && Object.keys(structuredData).length > 0 ? 'Contains structured medical data.' : 'No structured data available.'}`;
   }
 }
 

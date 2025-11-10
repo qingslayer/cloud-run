@@ -28,14 +28,10 @@ router.post('/', async (req, res) => {
       if (cachedSession) {
         // Security check: Ensure the session belongs to the authenticated user
         if (cachedSession.userId !== uid) {
-          console.warn(`[Security] User ${uid} attempted to access session ${sessionId} owned by ${cachedSession.userId}.`);
           return res.status(403).json({ error: 'Forbidden: You do not have access to this session.' });
         }
         documents = cachedSession.documents;
         conversationHistory = cachedSession.conversationHistory;
-        console.log(`[Cache HIT] Reusing documents for session ${sessionId}. Avoiding Firestore query.`);
-      } else {
-        console.log(`[Cache MISS] Session ${sessionId} not found or expired. Fetching fresh data.`);
       }
     }
 
@@ -48,7 +44,6 @@ router.post('/', async (req, res) => {
     // If no sessionId was provided, create a new one
     if (!sessionId) {
       sessionId = uuidv4();
-      console.log(`New conversation started. Assigning sessionId: ${sessionId}`);
     }
 
     const chatResult = await getAIChatResponse(message, documents, conversationHistory);
@@ -92,7 +87,6 @@ router.post('/end-session', (req, res) => {
 
   const deleted = sessionCache.delete(sessionId);
   if (deleted) {
-    console.log(`Session ${sessionId} terminated by user.`);
     res.status(200).json({ success: true, message: 'Session ended successfully.' });
   } else {
     res.status(404).json({ success: false, message: 'Session not found.' });

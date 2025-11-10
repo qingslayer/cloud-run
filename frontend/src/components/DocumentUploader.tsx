@@ -40,20 +40,16 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Monitor uploaded documents and update progress status when they complete processing
   useEffect(() => {
     uploadProgress.forEach((progress) => {
       if (progress.documentId && progress.status === 'processing') {
         const doc = uploadedDocuments.find(d => d.id === progress.documentId);
         if (doc && doc.status === 'complete') {
-          // Document finished processing, update progress status
           setUploadProgress(prev => prev.map(p =>
             p.documentId === progress.documentId
               ? { ...p, status: 'complete' }
               : p
           ));
-
-          // No longer auto-remove - let user dismiss or click to view
         }
       }
     });
@@ -64,7 +60,6 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
     const validFiles: File[] = [];
 
-    // Validate files first
     for (const file of Array.from(files)) {
       if (!ALLOWED_TYPES.includes(file.type)) {
         const errorMsg = `File type not supported: ${file.name}. Please upload PDF, JPG, or PNG files.`;
@@ -81,11 +76,9 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
     if (validFiles.length === 0) return;
 
-    // Signal upload start
     onUploadStart?.();
     setIsUploading(true);
 
-    // Initialize progress tracking
     const progressArray: UploadProgress[] = validFiles.map(file => ({
       filename: file.name,
       status: 'uploading'
@@ -95,32 +88,21 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
     let successCount = 0;
     let errorCount = 0;
 
-    // Upload each valid file
     for (let i = 0; i < validFiles.length; i++) {
       const file = validFiles[i];
 
       try {
-        console.log(`Uploading ${file.name}...`);
-
-        // Update status to uploading
         setUploadProgress(prev => prev.map((p, idx) =>
           idx === i ? { ...p, status: 'uploading' } : p
         ));
 
-        // Upload to backend - backend will auto-trigger AI analysis
         const uploadedDoc = await uploadDocument(file, 'Other', file.name);
 
-        console.log(`Upload successful: ${uploadedDoc.id}, status: ${uploadedDoc.status}`);
-
-        // Update status to processing (AI is working) and store document ID
         setUploadProgress(prev => prev.map((p, idx) =>
           idx === i ? { ...p, status: 'processing', documentId: uploadedDoc.id } : p
         ));
 
-        // Add the uploaded document to the UI. The backend will process it asynchronously.
         onFilesChange([uploadedDoc]);
-
-        // Don't mark as complete yet - will be done when document status changes
         successCount++;
 
       } catch (error) {
@@ -136,16 +118,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
       }
     }
 
-    // Clear the file input so the same file can be uploaded again if needed
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
 
-    // Signal upload complete
     setIsUploading(false);
     onUploadComplete?.();
-
-    // Don't auto-clear progress - wait for documents to finish processing
   };
   
   const handleClick = () => {
@@ -209,13 +187,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   const handleDocumentClick = (progress: UploadProgress) => {
     if (progress.status === 'complete' && progress.documentId && onSelectDocument) {
       onSelectDocument(progress.documentId);
-      // Remove from progress list after navigating
       setUploadProgress(prev => prev.filter(p => p.documentId !== progress.documentId));
     }
   };
 
   const handleDismiss = (progressToRemove: UploadProgress, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
+    e.stopPropagation();
     setUploadProgress(prev => prev.filter(p => p !== progressToRemove));
   };
 
@@ -264,7 +241,6 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         )}
       </div>
 
-      {/* Upload Progress List */}
       {uploadProgress.length > 0 && (
         <div className="space-y-2">
           {uploadProgress.map((progress, idx) => (
@@ -292,7 +268,6 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                   {progress.error || getStatusText(progress.status)}
                 </p>
               </div>
-              {/* Dismiss button for complete or error status */}
               {(progress.status === 'complete' || progress.status === 'error') && (
                 <button
                   onClick={(e) => handleDismiss(progress, e)}

@@ -16,10 +16,9 @@ interface DocumentCardProps {
 }
 
 const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView, onEdit, isViewed = false }) => {
-  // Fallback to 'Other' if category is not in the map
   const categoryInfo = categoryInfoMap[document.category];
 
-  if (!categoryInfo) {
+  if (!categoryInfo && import.meta.env.DEV) {
     console.warn(`Unknown category "${document.category}" for document ${document.id}. Using 'Other' as fallback.`);
   }
 

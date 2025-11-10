@@ -55,13 +55,11 @@ const App: React.FC = () => {
   }>({ isOpen: false, type: 'single', isDeleting: false });
 
 
-  // Firebase auth state listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setIsAuthLoading(false);
       if (user) {
-        // Load documents when user is authenticated
         setIsDocumentsLoading(true);
         getDocuments().then(({ documents: fetchedDocuments }) => {
           setDocuments(fetchedDocuments);
@@ -74,9 +72,8 @@ const App: React.FC = () => {
       }
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, []); // Empty dependency array - only set up listener once on mount
+  }, []);
 
 
   useEffect(() => {
@@ -118,7 +115,6 @@ const App: React.FC = () => {
     setDeleteConfirmation(prev => ({ ...prev, isDeleting: true }));
 
     try {
-      // Delete all documents in parallel and wait for all to complete
       await Promise.all(documents.map(doc => apiDeleteDocument(doc.id)));
       setDocuments([]);
       success("All records deleted successfully");
@@ -136,17 +132,14 @@ const App: React.FC = () => {
 
   const handleUpdateDocument = useCallback(async (id: string, updates: Partial<DocumentFile>) => {
     try {
-      // Never send 'id' field in updates - it's immutable
       const { id: _, ...safeUpdates } = updates as any;
 
       const updatedDoc = await apiUpdateDocument(id, safeUpdates);
       
-      // Update the main documents list
       setDocuments(prevDocs =>
         prevDocs.map(doc => (doc.id === id ? updatedDoc : doc))
       );
 
-      // ALSO update the currently selected document if it matches
       if (selectedDocumentId === id) {
         setSelectedDocumentData(updatedDoc);
       }
@@ -178,7 +171,6 @@ const App: React.FC = () => {
       await apiDeleteDocument(documentId);
       setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== documentId));
 
-      // Close detail view if this document was open
       if (selectedDocumentId === documentId) {
         handleCloseDocumentDetail();
       }
@@ -200,7 +192,6 @@ const App: React.FC = () => {
   const selectedDocumentDataRef = useRef<DocumentFile | null>(null);
   const lastSelectedDocumentIdRef = useRef<string | null>(null);
 
-  // Keep refs in sync with state
   useEffect(() => {
     selectedDocumentIdRef.current = selectedDocumentId;
   }, [selectedDocumentId]);
@@ -210,12 +201,10 @@ const App: React.FC = () => {
   }, [selectedDocumentData]);
 
   const handleSelectDocument = useCallback(async (id: string) => {
-    // Prevent multiple simultaneous calls
     if (isLoadingDocumentRef.current) {
       return;
     }
 
-    // Check if document is already fully loaded and displayed
     const isCurrentlyDisplayed =
       (selectedDocumentIdRef.current === id) &&
       selectedDocumentDataRef.current?.id === id;
@@ -230,18 +219,15 @@ const App: React.FC = () => {
     try {
       const fullDoc = await getDocument(id);
 
-      // Update refs synchronously before setting state
       selectedDocumentDataRef.current = fullDoc;
       setSelectedDocumentData(fullDoc);
 
       selectedDocumentIdRef.current = id;
       setSelectedDocumentId(id);
 
-      // Mark document as viewed
       setViewedDocuments(prev => {
         const newSet = new Set(prev);
         newSet.add(id);
-        // Persist to localStorage
         localStorage.setItem('viewedDocuments', JSON.stringify(Array.from(newSet)));
         return newSet;
       });
@@ -249,13 +235,12 @@ const App: React.FC = () => {
     } catch (err) {
       console.error("Error fetching document details:", err);
       error("Failed to load document. Please try again.");
-      // Clear refs on error so user can retry
       selectedDocumentDataRef.current = null;
       lastSelectedDocumentIdRef.current = null;
     } finally {
       isLoadingDocumentRef.current = false;
     }
-  }, [error]); // Include error function as dependency
+  }, [error]);
 
   const handleCloseDocumentDetail = () => {
     selectedDocumentIdRef.current = null;
@@ -274,10 +259,8 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Send message with chat history and sessionId to backend
       const result = await sendChatMessage(message, chatMessages, chatSessionId || undefined);
 
-      // Store session ID for subsequent messages
       setChatSessionId(result.sessionId);
 
       const aiMessage: ChatMessageType = {
@@ -303,7 +286,6 @@ const App: React.FC = () => {
   const handleSearchSubmit = async (query: string) => {
     if (!query.trim()) return;
 
-    // Clear chat messages and session when starting new search
     setChatMessages([]);
     setChatSessionId(null);
 
@@ -313,11 +295,9 @@ const App: React.FC = () => {
     setView('search');
 
     try {
-      // Backend handles AI vs simple search logic
       const searchResult = await processUniversalSearch(query);
       setPageSearchResults(searchResult);
 
-      // If search opened a chat session, store the sessionId
       if (searchResult.type === 'chat') {
         setChatSessionId(searchResult.sessionId);
       }
@@ -337,7 +317,6 @@ const App: React.FC = () => {
   const handleAskFollowUp = () => {
     if (!pageSearchResults) return;
 
-    // Handle answer, summary, or chat types
     const isValidForFollowUp =
       (pageSearchResults.type === 'answer' && pageSearchResults.answer) ||
       (pageSearchResults.type === 'summary' && pageSearchResults.summary) ||
@@ -345,7 +324,6 @@ const App: React.FC = () => {
 
     if (!isValidForFollowUp) return;
 
-    // Set initial chat history from search
     const responseText = pageSearchResults.type === 'summary'
       ? pageSearchResults.summary
       : pageSearchResults.answer;
@@ -357,7 +335,6 @@ const App: React.FC = () => {
 
     setChatMessages(initialHistory);
 
-    // If this was a chat-type result, preserve the sessionId
     if (pageSearchResults.type === 'chat') {
       setChatSessionId(pageSearchResults.sessionId);
     }
@@ -369,7 +346,6 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      // Clear application state
       setDocuments([]);
       setChatMessages([]);
       setView('dashboard');
@@ -383,12 +359,10 @@ const App: React.FC = () => {
 
   const selectedDocument = selectedDocumentId ? selectedDocumentData : null;
 
-  // Show loading state while checking authentication
   if (isAuthLoading) {
     return <LoadingState message="Loading..." fullScreen />;
   }
 
-  // Show login if not authenticated
   if (!currentUser) {
     return <Login />;
   }
@@ -456,7 +430,6 @@ const App: React.FC = () => {
           hasDocuments={documents.length > 0}
         />
 
-        {/* Render DocumentDetailView as an overlay */}
         {selectedDocument && (
             <DocumentDetailView 
                 document={selectedDocument} 

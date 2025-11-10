@@ -112,8 +112,6 @@ router.post('/search', async (req, res) => {
 
     const { type, category, keywords, timeRange } = analyzeQuery(query);
 
-    console.log(`Query: "${query}" → Type: ${type}, Category: ${category}, Keywords: ${JSON.stringify(keywords)}, Time: ${timeRange ? timeRange.type : 'none'}`);
-
     // Helper function to apply time filter only (for direct document queries)
     const applyTimeFilter = (docs) => {
       if (!timeRange) return docs;
@@ -134,24 +132,13 @@ router.post('/search', async (req, res) => {
 
     // Helper function to filter documents by time range AND keywords (for AI queries)
     const filterDocumentsForAI = (docs) => {
-      console.log(`  Starting with ${docs.length} documents`);
-
-      // First apply time filter
       let filtered = applyTimeFilter(docs);
-      console.log(`  After time filter: ${filtered.length} documents`);
 
-      // For AI queries, skip keyword filtering if category is already identified
-      // The AI is smart enough to determine relevance from category-filtered documents
-      // Keyword filtering can be too strict (e.g., "appointment" vs "visit summary")
       if (category) {
-        console.log(`  Category already identified ('${category}'), skipping keyword filter for AI processing`);
         return filtered;
       }
 
-      // Only apply keyword filter if no category and keywords exist
-      // This helps narrow down documents when category wasn't identified
       if (keywords && keywords.length > 0) {
-        const beforeKeywordFilter = filtered.length;
         filtered = filtered.filter(doc => {
           const a = doc.aiAnalysis || {};
 
@@ -172,7 +159,6 @@ router.post('/search', async (req, res) => {
 
           return allGroupsMatch;
         });
-        console.log(`  After keyword filter: ${filtered.length} documents (filtered out ${beforeKeywordFilter - filtered.length})`);
       }
 
       return filtered;
@@ -198,15 +184,9 @@ router.post('/search', async (req, res) => {
         const snapshot = await firestoreQuery.get();
         let documents = snapshot.docs.map(doc => doc.data());
 
-        console.log(`  Starting with ${documents.length} documents from Firestore`);
-
-        // Apply time filter
         documents = applyTimeFilter(documents);
-        console.log(`  After time filter: ${documents.length} documents`);
 
-        // Apply keyword filter if keywords exist (with medical terminology synonym expansion + stemming)
         if (keywords && keywords.length > 0) {
-          const beforeKeywordFilter = documents.length;
           documents = documents.filter(doc => {
             const a = doc.aiAnalysis || {};
 
@@ -227,13 +207,9 @@ router.post('/search', async (req, res) => {
 
             return allGroupsMatch;
           });
-          console.log(`  After keyword filter: ${documents.length} documents (filtered out ${beforeKeywordFilter - documents.length})`);
         }
 
-        // Apply fuzzy search if we have keywords and got few or no results
-        // This catches typos and variations that exact matching missed
         if (keywords && keywords.length > 0 && documents.length < 5) {
-          console.log(`  Few results (${documents.length}), applying fuzzy search...`);
 
           // Get all documents (before keyword filter) for fuzzy matching
           let allDocs = snapshot.docs.map(doc => doc.data());
@@ -267,15 +243,9 @@ router.post('/search', async (req, res) => {
               existingIds.add(result.item.id);
             }
           });
-
-          console.log(`  After fuzzy search: ${documents.length} documents`);
         }
 
-        // Apply relevance ranking (sorts by relevance score, then date)
         documents = rankDocuments(documents, keywords);
-        console.log(`  Documents ranked by relevance`);
-
-        console.log(`Document search for "${query}" returned ${documents.length} documents. No AI was used.`);
 
         // Prepare result
         const result = {
@@ -430,35 +400,14 @@ router.get('/:id', async (req, res) => {
  * @param {string} mimeType - File MIME type
  */
 async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
-  console.log(`Starting background AI analysis for document ${documentId}`);
-
   try {
     const docRef = firestore.collection('documents').doc(documentId);
     const base64Data = fileBuffer.toString('base64');
 
-    // Extract text
-    console.log('Extracting text...');
     const extractedText = await extractTextFromDocument(base64Data, mimeType);
-    console.log(`Text extracted (length: ${extractedText.length})`);
-
-    // Analyze and categorize
-    console.log('Analyzing and categorizing...');
     const categorization = await analyzeAndCategorizeDocument(extractedText);
-    console.log('Categorization complete:', categorization);
-
-    // Extract structured data
-    console.log('Extracting structured data...');
-    console.log(`  Category: "${categorization.category}"`);
-    console.log(`  Text length: ${extractedText.length} characters`);
     const structuredData = await extractStructuredData(extractedText, categorization.category);
-    console.log('Structured data extraction complete.');
-    console.log('  Result keys:', Object.keys(structuredData || {}));
-
-    // Generate search summary (for efficient AI querying)
-    console.log('Generating search summary...');
     const searchSummary = await generateSearchSummary(extractedText, categorization.category, structuredData);
-    console.log('Search summary generated.');
-    console.log(`  Summary length: ${searchSummary.length} characters`);
 
     // Prepare analysis results
     const analysisResults = {
@@ -486,9 +435,7 @@ async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
     analysisResults.aiAnalysis.searchableText = searchableText;
 
     await docRef.update(analysisResults);
-    console.log(`Background AI analysis completed successfully for document ${documentId}`);
 
-    // Invalidate search cache for this user (new document added)
     invalidateUserCache(currentDoc.userId);
 
   } catch (error) {
@@ -596,15 +543,12 @@ router.delete('/:id', async (req, res) => {
   const { uid } = req.user;
   const { id } = req.params;
 
-  console.log(`User ${uid} attempting to delete document ${id}`);
-
   try {
     // 1. Fetch document from Firestore
     const docRef = firestore.collection('documents').doc(id);
     const doc = await docRef.get();
 
     if (!doc.exists) {
-      console.log(`Document ${id} not found for deletion attempt by user ${uid}.`);
       return res.status(404).json({ error: 'Document not found' });
     }
 
@@ -612,7 +556,6 @@ router.delete('/:id', async (req, res) => {
 
     // 2. Verify user has access
     if (documentData.userId !== uid) {
-      console.warn(`User ${uid} forbidden to delete document ${id}. Document owned by ${documentData.userId}.`);
       return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
     }
 
@@ -625,20 +568,16 @@ router.delete('/:id', async (req, res) => {
     if (exists) {
       try {
         await file.delete();
-        console.log(`Successfully deleted gs://${bucketName}/${fileName} for document ${id}.`);
       } catch (storageError) {
         console.error(`Error deleting file from Cloud Storage for document ${id}:`, storageError);
         // If storage deletion fails, we don't want to delete the Firestore record
         return res.status(500).json({ error: 'Failed to delete file from storage.' });
       }
-    } else {
-      console.warn(`File gs://${bucketName}/${fileName} for document ${id} not found in Cloud Storage. Orphaned Firestore record?`);
     }
 
     // 4. Delete metadata from Firestore
     try {
       await docRef.delete();
-      console.log(`Successfully deleted document ${id} from Firestore.`);
     } catch (firestoreError) {
       console.error(`CRITICAL: Failed to delete document ${id} from Firestore after deleting from Cloud Storage. ORPHANED FILE.`, firestoreError);
       // This is a critical error to log, as we now have an orphaned file in Cloud Storage.
@@ -650,7 +589,6 @@ router.delete('/:id', async (req, res) => {
     invalidateUserCache(uid);
 
     // 6. Return success response
-    console.log(`User ${uid} successfully deleted document ${id}.`);
     res.status(200).json({
       success: true,
       message: 'Document deleted successfully',
@@ -674,8 +612,6 @@ router.patch('/:id', async (req, res) => {
   const { uid } = req.user;
   const { id } = req.params;
   const updates = req.body;
-
-  console.log(`User ${uid} attempting to edit document ${id} with updates:`, updates);
 
   try {
     // 1. Fetch document from Firestore
@@ -763,8 +699,6 @@ router.patch('/:id', async (req, res) => {
       // Compute new searchable text
       const searchableText = computeSearchableText(docWithUpdates);
       updateData['aiAnalysis.searchableText'] = searchableText;
-
-      console.log(`Recomputed searchableText for document ${id}`);
     }
 
     // 6. Update Firestore
@@ -794,8 +728,6 @@ router.post('/:id/analyze', async (req, res) => {
   const { uid } = req.user;
   const { id } = req.params;
 
-  console.log(`User ${uid} starting analysis for document ${id}`);
-
   try {
     // 1. Fetch document from Firestore and verify ownership
     const docRef = firestore.collection('documents').doc(id);
@@ -812,29 +744,16 @@ router.post('/:id/analyze', async (req, res) => {
     }
 
     // 2. Download file from Cloud Storage
-    console.log(`Downloading gs://${process.env.STORAGE_BUCKET}/${documentData.storagePath}`);
     const fileBuffer = await storage.bucket(process.env.STORAGE_BUCKET).file(documentData.storagePath).download();
     const base64Data = fileBuffer[0].toString('base64');
-    console.log(`File downloaded and converted to base64 (size: ${base64Data.length})`);
 
     // 3. Analyze with Gemini (using existing services)
     let analysisResults;
     try {
-      console.log('Extracting text...');
       const extractedText = await extractTextFromDocument(base64Data, documentData.fileType);
-      console.log(`Text extracted (length: ${extractedText.length})`);
-
-      console.log('Analyzing and categorizing...');
       const categorization = await analyzeAndCategorizeDocument(extractedText);
-      console.log('Categorization complete:', categorization);
-
-      console.log('Extracting structured data...');
       const structuredData = await extractStructuredData(extractedText, categorization.category);
-      console.log('Structured data extraction complete.');
-
-      console.log('Generating search summary...');
       const searchSummary = await generateSearchSummary(extractedText, categorization.category, structuredData);
-      console.log('Search summary generated.');
 
       analysisResults = {
         displayName: categorization.title,
@@ -858,9 +777,7 @@ router.post('/:id/analyze', async (req, res) => {
     }
 
     // 4. Save the results to Firestore
-    console.log('Saving analysis results to Firestore...');
     await docRef.update(analysisResults);
-    console.log('Firestore updated successfully.');
 
     // 5. Return the complete, updated document
     const updatedDoc = await docRef.get();

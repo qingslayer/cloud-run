@@ -1,6 +1,10 @@
 import { MEDICAL_SYNONYM_MAP } from './gemini/medicalTerminology.js';
+import natural from 'natural';
 
-const ACTION_WORDS = ['show', 'list', 'find', 'get', 'display', 'give me'];
+// Initialize stemmer for word normalization
+const stemmer = natural.PorterStemmer;
+
+const ACTION_WORDS = ['show', 'list', 'find', 'get', 'display', 'give me', 'summarize', 'summary', 'overview'];
 const CATEGORY_WORDS = {
   'lab-result': ['lab', 'labs', 'blood work', 'blood test', 'test result'],
   'prescription': ['prescription', 'prescriptions', 'medication', 'medications', 'drug', 'drugs'],
@@ -86,7 +90,14 @@ function extractKeywords(query) {
 
   sortedSynonymKeys.forEach(key => {
     if (remainingQuery.includes(key)) {
-      keywordGroups.push([key, ...MEDICAL_SYNONYM_MAP[key]]);
+      // Add stemmed versions of all synonyms for better matching
+      const synonymGroup = [key, ...MEDICAL_SYNONYM_MAP[key]];
+      const stemmedSynonyms = synonymGroup.map(term => stemmer.stem(term));
+
+      // Combine original terms with their stems (remove duplicates)
+      const expandedGroup = [...new Set([...synonymGroup, ...stemmedSynonyms])];
+
+      keywordGroups.push(expandedGroup);
       remainingQuery = remainingQuery.replace(new RegExp(key, 'g'), ' ');
     }
   });
@@ -94,7 +105,10 @@ function extractKeywords(query) {
   // Add remaining individual keywords (only if length > 2)
   const remainingKeywords = remainingQuery.trim().split(/\s+/).filter(kw => kw.length > 2);
   remainingKeywords.forEach(kw => {
-    keywordGroups.push([kw]);
+    // Include both original word and its stem
+    const stem = stemmer.stem(kw);
+    const keywordGroup = stem !== kw ? [kw, stem] : [kw];
+    keywordGroups.push(keywordGroup);
   });
 
   return keywordGroups;

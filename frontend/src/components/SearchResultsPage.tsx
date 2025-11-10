@@ -56,6 +56,28 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
             <h1 className="text-4xl font-bold tracking-tight text-slate-800 dark:text-white">{query}</h1>
         </div>
 
+        {/* AI Fallback Warning Banner */}
+        {results?.fallback && (
+          <div className="mb-6 p-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                  AI Analysis Temporarily Unavailable
+                </h3>
+                <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+                  {results.fallbackReason || 'The AI service is currently unavailable. Showing relevant documents from your records instead.'}
+                </p>
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                  💡 Your documents are still being searched and ranked by relevance. Try your search again in a few moments for AI-powered answers.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex flex-col items-center text-center p-16">
             <SparklesIcon className="w-12 h-12 text-teal-500 animate-pulse" />

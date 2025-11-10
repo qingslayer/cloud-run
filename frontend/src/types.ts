@@ -36,7 +36,7 @@ export type Theme = 'light' | 'dark' | 'system';
 export type View = 'dashboard' | 'records' | 'settings' | 'search';
 
 export type UniversalSearchResult =
-  | { type: 'documents'; documents: DocumentFile[] }
-  | { type: 'summary'; summary: string; referencedDocuments: DocumentFile[] }
-  | { type: 'answer'; answer: string; referencedDocuments: DocumentFile[] }
-  | { type: 'chat'; answer: string; sessionId: string; referencedDocuments: DocumentFile[] };
+  | { type: 'documents'; documents: DocumentFile[]; fallback?: boolean; fallbackReason?: string }
+  | { type: 'summary'; summary: string; referencedDocuments: DocumentFile[]; fallback?: boolean; fallbackReason?: string }
+  | { type: 'answer'; answer: string; referencedDocuments: DocumentFile[]; fallback?: boolean; fallbackReason?: string }
+  | { type: 'chat'; answer: string; sessionId: string; referencedDocuments: DocumentFile[]; fallback?: boolean; fallbackReason?: string };

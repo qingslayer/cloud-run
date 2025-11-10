@@ -44,8 +44,26 @@ ${structuredDataStr ? '\nDetailed Values:\n' + structuredDataStr : ''}
 3. **No Medical Advice or Interpretation**:
    - If asked "should I...", "what does this mean for my health?", "is this serious?", respond with: "I can show you what's in your records, but I cannot provide medical interpretation or advice. Please consult your healthcare provider for medical guidance."
    - If a document contains a medical professional's interpretation, quote it directly with attribution: "According to [Document Name], Dr. [Name] noted: [exact quote]"
-   - NEVER add your own medical context, significance, implications, or interpretations
+   - NEVER add your own medical implications, diagnoses, treatment recommendations, or clinical interpretations
    - NEVER provide unsolicited trends, patterns, or insights unless explicitly asked
+
+**MAKING INFORMATION USEFUL - BALANCE RULES:**
+
+While you cannot provide medical advice, you SHOULD make the information understandable:
+
+1. **Translate Medical Jargon**: When presenting test results, briefly explain what each test measures in 1 simple sentence.
+   - Example: "ALT (Alanine Aminotransferase) is a liver enzyme that indicates liver function. Your level was 100.50 U/L (reference range: 10-49), which is above the reference range."
+
+2. **Reference Range Context**: Always present values with their reference ranges and note whether they're within range, above, or below - but do NOT interpret what this means clinically.
+   - Use neutral language: "above/below the reference range" (not "concerning" or "problematic")
+   - Example: "Your Total Cholesterol was 250 mg/dL (reference: < 200), which is above the reference range."
+
+3. **Organize by Category**: Group related tests together (e.g., "Lipid Profile", "Complete Blood Count") rather than listing everything in one bullet list.
+
+4. **Plain Language Summary**: Start with a brief overview sentence before listing specific values.
+   - Example: "Based on your blood work from December 2, 202X, here's what was tested:"
+
+5. **Important Disclaimer**: Always include at the end: "I can show you what's in your records, but I cannot provide medical interpretation or advice. Please consult your healthcare provider for medical guidance."
 
 ${MEDICAL_TERMINOLOGY_GUIDE}
 
@@ -55,23 +73,93 @@ ${documentContext}
 
 **User Question:** "${query}"
 
-**Instructions:**
+**CRITICAL: Determine Query Specificity**
 
-1. **Find the Exact Answer:** Locate the specific information within the document context that answers the user's question.
+First, classify the user's query as either GENERAL or SPECIFIC:
 
-2. **Document Referencing:**
-   - When asked about "latest" or "most recent", identify the document with the most recent date
-   - For temporal comparisons, explicitly state dates: "Your [value] was X on [date] compared to Y on [earlier date]"
-   - If multiple documents match, mention all: "I found [N] matching documents. The most recent from [date]..."
+**GENERAL queries** are broad overview questions:
+- Examples: "how's my blood work", "show me my labs", "what tests have I had", "my recent results", "blood work summary"
+- Intent: User wants to know WHAT documents/tests exist, not detailed values
 
-3. **Cite Your Sources:** Identify the specific document(s) that contain the answer and include them in referencedDocuments.
+**SPECIFIC queries** ask about particular tests, values, or conditions:
+- Examples: "what was my cholesterol", "show me liver enzymes", "my hemoglobin level", "ALT results", "what's my glucose"
+- Intent: User wants detailed information about a specific measurement
 
-4. **Edge Cases:**
-   - **No relevant information**: "I couldn't find information about [topic] in your uploaded records. Please refine your search or check if the document has been uploaded."
-   - **Conflicting information**: "I found conflicting information: [Document A] shows [value], while [Document B] shows [different value]."
-   - **Incomplete data**: "The [document name] contains partial information about [topic], but [specific detail] isn't clearly stated."
+**Instructions Based on Query Type:**
 
-5. **Format the Output:** Return a JSON object with the fields "answer" and "referencedDocuments". The referencedDocuments should be an array of the full document objects. Do NOT include "suggestedFollowUps".
+**FOR GENERAL QUERIES - Use "Librarian" Format (Document Summary):**
+
+Provide a concise overview WITHOUT listing individual test values:
+
+1. List the number and dates of relevant documents
+2. Mention what types of tests were performed (categories only)
+3. Optionally note if some values were outside reference ranges (without listing which ones)
+4. Encourage user to ask for specific details
+
+Example response:
+"I found 3 blood work documents in your records:
+
+• Comprehensive Metabolic Panel (CMP) - December 2, 202X
+• Lipid Profile - December 2, 202X
+• Complete Blood Count (CBC) - December 2, 202X and February 10, 2014
+
+These tests covered liver function, kidney function, cholesterol levels, and blood cell counts. Some values were outside their reference ranges.
+
+If you'd like details on any specific test or value, just ask! I can show you what's in your records, but I cannot provide medical interpretation or advice. Please consult your healthcare provider for medical guidance."
+
+**FOR SPECIFIC QUERIES - Use "Encyclopedia" Format (Detailed Values):**
+
+Provide detailed information about the requested test(s):
+
+1. Explain what each test measures in 1 simple sentence
+2. Show the value with its unit
+3. Show the reference range
+4. Note if it's within/above/below range using neutral language
+
+Example response:
+"**Cholesterol Results from December 2, 202X:**
+
+• **Total Cholesterol** measures the total amount of cholesterol in your blood. Your level was 250 mg/dL (reference: < 200), which is above the reference range.
+
+• **LDL Cholesterol** measures "bad" cholesterol that can build up in arteries. Your level was 190 mg/dL (reference: < 100), which is above the reference range.
+
+• **HDL Cholesterol** measures "good" cholesterol that helps remove other cholesterol. Your level was 50 mg/dL (reference: > 40), which is above the minimum reference range.
+
+• **Triglycerides** measures a type of fat in your blood. Your level was 100 mg/dL (reference: < 150), which is within the reference range.
+
+I can show you what's in your records, but I cannot provide medical interpretation or advice. Please consult your healthcare provider for medical guidance."
+
+**Additional Guidelines:**
+
+- **Document Referencing:** When asked about "latest" or "most recent", identify the document with the most recent date
+- **Temporal Comparisons:** Explicitly state dates: "Your [value] was X on [date] compared to Y on [earlier date]"
+- **Multiple Documents:** If multiple documents match, mention all with dates
+- **Cite Your Sources:** Include specific document(s) that contain the answer in referencedDocuments
+
+**Edge Cases:**
+- **No relevant information**: "I couldn't find information about [topic] in your uploaded records."
+- **Conflicting information**: "I found conflicting information: [Document A] shows [value], while [Document B] shows [different value]."
+- **Incomplete data**: "The [document name] contains partial information about [topic], but [specific detail] isn't clearly stated."
+
+**CRITICAL - Format the Output:**
+
+Return a JSON object with exactly these fields:
+- "answer": Your response text (string)
+- "referencedDocuments": An array of document display names (strings) that you referenced in your answer
+
+**IMPORTANT:** For referencedDocuments, return ONLY the document display names as strings, exactly as they appear in the "DOCUMENT:" lines above. For example:
+- If you used "--- DOCUMENT: Comprehensive Metabolic Panel (CMP) - December 2, 202X ---", return "Comprehensive Metabolic Panel (CMP) - December 2, 202X"
+- Do NOT return full document objects with Summary/Detailed Values
+- Do NOT make up new names
+- Do NOT include documents you didn't actually reference
+
+Example output:
+{
+  "answer": "I found 4 blood work documents...",
+  "referencedDocuments": ["Comprehensive Metabolic Panel (CMP) - December 2, 202X", "Lipid Profile for Yash M. Patel - December 2, 202X"]
+}
+
+Do NOT include "suggestedFollowUps".
 
 **JSON Response:**`;
 
@@ -88,59 +176,72 @@ ${documentContext}
 
       const jsonResponse = JSON.parse(jsonString);
 
-      // The AI returns document references (IDs or partial objects)
+      // The AI should return document references as displayName strings
       // We need to map them back to the full document objects from our input
       if (jsonResponse.referencedDocuments && Array.isArray(jsonResponse.referencedDocuments)) {
         const matchedDocs = [];
         const unmatchedRefs = [];
 
+        console.log(`📋 AI returned ${jsonResponse.referencedDocuments.length} document references`);
+
         jsonResponse.referencedDocuments.forEach(ref => {
-          // Try to find the full document by ID or displayName
-          const docId = typeof ref === 'string' ? ref : ref.id;
-          const docName = typeof ref === 'object' ? (ref.displayName || ref.filename) : null;
+          // Ref should be a string (displayName), but handle legacy object format too
+          const refString = typeof ref === 'string' ? ref : (ref.displayName || ref.filename || ref.id);
+
+          if (!refString) {
+            console.warn('  ⚠️  Skipping invalid reference:', ref);
+            unmatchedRefs.push(ref);
+            return;
+          }
 
           // Try multiple matching strategies
-          let matchedDoc = documents.find(d => d.id === docId);
+          let matchedDoc = null;
 
-          if (!matchedDoc && docName) {
-            // Try exact displayName match
-            matchedDoc = documents.find(d => d.displayName === docName);
+          // 1. Try exact displayName match (most common)
+          matchedDoc = documents.find(d => d.displayName === refString);
+
+          // 2. Try exact filename match
+          if (!matchedDoc) {
+            matchedDoc = documents.find(d => d.filename === refString);
           }
 
-          if (!matchedDoc && docName) {
-            // Try exact filename match
-            matchedDoc = documents.find(d => d.filename === docName);
+          // 3. Try ID match (if AI returned an ID string)
+          if (!matchedDoc) {
+            matchedDoc = documents.find(d => d.id === refString);
           }
 
-          if (!matchedDoc && docName) {
-            // Try partial match (case-insensitive)
-            const normalizedName = docName.toLowerCase().trim();
+          // 4. Try partial match (case-insensitive, substring)
+          if (!matchedDoc) {
+            const normalizedRef = refString.toLowerCase().trim();
             matchedDoc = documents.find(d =>
-              d.displayName.toLowerCase().includes(normalizedName) ||
-              normalizedName.includes(d.displayName.toLowerCase()) ||
-              d.filename.toLowerCase().includes(normalizedName) ||
-              normalizedName.includes(d.filename.toLowerCase())
+              d.displayName?.toLowerCase().includes(normalizedRef) ||
+              normalizedRef.includes(d.displayName?.toLowerCase()) ||
+              d.filename?.toLowerCase().includes(normalizedRef) ||
+              normalizedRef.includes(d.filename?.toLowerCase())
             );
           }
 
           if (matchedDoc) {
+            console.log(`  ✅ Matched: "${refString}" → ${matchedDoc.displayName}`);
             matchedDocs.push(matchedDoc);
           } else {
-            unmatchedRefs.push(ref);
+            console.warn(`  ❌ No match for: "${refString}"`);
+            unmatchedRefs.push(refString);
           }
         });
 
-        // Log unmatched references for debugging
+        // Log summary
+        console.log(`📊 Document matching: ${matchedDocs.length} matched, ${unmatchedRefs.length} unmatched`);
+
         if (unmatchedRefs.length > 0) {
-          console.warn('⚠️  Failed to match some document references:');
-          unmatchedRefs.forEach(ref => {
-            console.warn('  - Unmatched ref:', JSON.stringify(ref));
-          });
-          console.warn('  Available document IDs:', documents.map(d => d.id).join(', '));
-          console.warn('  Available displayNames:', documents.map(d => d.displayName).join(', '));
+          console.warn('⚠️  Available document names were:');
+          documents.forEach(d => console.warn(`     - "${d.displayName}"`));
         }
 
         jsonResponse.referencedDocuments = matchedDocs;
+      } else {
+        console.warn('⚠️  AI response missing referencedDocuments array');
+        jsonResponse.referencedDocuments = [];
       }
 
       return jsonResponse;
@@ -230,59 +331,72 @@ ${documentContext}
 
       const jsonResponse = JSON.parse(jsonString);
 
-      // The AI returns document references (IDs or partial objects)
+      // The AI should return document references as displayName strings
       // We need to map them back to the full document objects from our input
       if (jsonResponse.referencedDocuments && Array.isArray(jsonResponse.referencedDocuments)) {
         const matchedDocs = [];
         const unmatchedRefs = [];
 
+        console.log(`📋 AI returned ${jsonResponse.referencedDocuments.length} document references`);
+
         jsonResponse.referencedDocuments.forEach(ref => {
-          // Try to find the full document by ID or displayName
-          const docId = typeof ref === 'string' ? ref : ref.id;
-          const docName = typeof ref === 'object' ? (ref.displayName || ref.filename) : null;
+          // Ref should be a string (displayName), but handle legacy object format too
+          const refString = typeof ref === 'string' ? ref : (ref.displayName || ref.filename || ref.id);
+
+          if (!refString) {
+            console.warn('  ⚠️  Skipping invalid reference:', ref);
+            unmatchedRefs.push(ref);
+            return;
+          }
 
           // Try multiple matching strategies
-          let matchedDoc = documents.find(d => d.id === docId);
+          let matchedDoc = null;
 
-          if (!matchedDoc && docName) {
-            // Try exact displayName match
-            matchedDoc = documents.find(d => d.displayName === docName);
+          // 1. Try exact displayName match (most common)
+          matchedDoc = documents.find(d => d.displayName === refString);
+
+          // 2. Try exact filename match
+          if (!matchedDoc) {
+            matchedDoc = documents.find(d => d.filename === refString);
           }
 
-          if (!matchedDoc && docName) {
-            // Try exact filename match
-            matchedDoc = documents.find(d => d.filename === docName);
+          // 3. Try ID match (if AI returned an ID string)
+          if (!matchedDoc) {
+            matchedDoc = documents.find(d => d.id === refString);
           }
 
-          if (!matchedDoc && docName) {
-            // Try partial match (case-insensitive)
-            const normalizedName = docName.toLowerCase().trim();
+          // 4. Try partial match (case-insensitive, substring)
+          if (!matchedDoc) {
+            const normalizedRef = refString.toLowerCase().trim();
             matchedDoc = documents.find(d =>
-              d.displayName.toLowerCase().includes(normalizedName) ||
-              normalizedName.includes(d.displayName.toLowerCase()) ||
-              d.filename.toLowerCase().includes(normalizedName) ||
-              normalizedName.includes(d.filename.toLowerCase())
+              d.displayName?.toLowerCase().includes(normalizedRef) ||
+              normalizedRef.includes(d.displayName?.toLowerCase()) ||
+              d.filename?.toLowerCase().includes(normalizedRef) ||
+              normalizedRef.includes(d.filename?.toLowerCase())
             );
           }
 
           if (matchedDoc) {
+            console.log(`  ✅ Matched: "${refString}" → ${matchedDoc.displayName}`);
             matchedDocs.push(matchedDoc);
           } else {
-            unmatchedRefs.push(ref);
+            console.warn(`  ❌ No match for: "${refString}"`);
+            unmatchedRefs.push(refString);
           }
         });
 
-        // Log unmatched references for debugging
+        // Log summary
+        console.log(`📊 Document matching: ${matchedDocs.length} matched, ${unmatchedRefs.length} unmatched`);
+
         if (unmatchedRefs.length > 0) {
-          console.warn('⚠️  Failed to match some document references:');
-          unmatchedRefs.forEach(ref => {
-            console.warn('  - Unmatched ref:', JSON.stringify(ref));
-          });
-          console.warn('  Available document IDs:', documents.map(d => d.id).join(', '));
-          console.warn('  Available displayNames:', documents.map(d => d.displayName).join(', '));
+          console.warn('⚠️  Available document names were:');
+          documents.forEach(d => console.warn(`     - "${d.displayName}"`));
         }
 
         jsonResponse.referencedDocuments = matchedDocs;
+      } else {
+        console.warn('⚠️  AI response missing referencedDocuments array');
+        jsonResponse.referencedDocuments = [];
       }
 
       return jsonResponse;

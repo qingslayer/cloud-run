@@ -26,6 +26,8 @@ export async function processUniversalSearch(
       return {
         type: 'documents',
         documents: data.results, // Backend uses 'results' field
+        fallback: data.fallback,
+        fallbackReason: data.fallbackReason,
       };
 
     case 'summary':
@@ -33,6 +35,8 @@ export async function processUniversalSearch(
         type: 'summary',
         summary: data.summary,
         referencedDocuments: data.referencedDocuments,
+        fallback: data.fallback,
+        fallbackReason: data.fallbackReason,
       };
 
     case 'answer':
@@ -40,6 +44,8 @@ export async function processUniversalSearch(
         type: 'answer',
         answer: data.answer,
         referencedDocuments: data.referencedDocuments,
+        fallback: data.fallback,
+        fallbackReason: data.fallbackReason,
       };
 
     case 'chat':
@@ -48,6 +54,8 @@ export async function processUniversalSearch(
         answer: data.answer,
         sessionId: data.sessionId,
         referencedDocuments: data.referencedDocuments,
+        fallback: data.fallback,
+        fallbackReason: data.fallbackReason,
       };
 
     default:

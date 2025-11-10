@@ -8,6 +8,9 @@ import { extractTextFromDocument, analyzeAndCategorizeDocument, extractStructure
 import { Firestore, FieldValue } from '@google-cloud/firestore';
 import { analyzeQuery } from '../services/queryAnalyzer.js';
 import sessionCache from '../services/sessionCache.js';
+import { getCachedResults, setCachedResults, invalidateUserCache } from '../services/searchCache.js';
+import { rankDocuments } from '../services/searchRanking.js';
+import Fuse from 'fuse.js';
 
 
 const router = express.Router();
@@ -21,6 +24,27 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
 });
+
+/**
+ * Helper function to compute searchable text from document fields
+ * This pre-computes the searchable text to avoid expensive JSON.stringify on every search
+ * @param {object} doc - Document object with all fields
+ * @returns {string} Concatenated searchable text in lowercase
+ */
+function computeSearchableText(doc) {
+  const aiAnalysis = doc.aiAnalysis || {};
+
+  const searchableText = [
+    doc.filename?.toLowerCase() || '',
+    doc.displayName?.toLowerCase() || '',
+    doc.category?.toLowerCase() || '',
+    doc.notes?.toLowerCase() || '',
+    aiAnalysis.searchSummary?.toLowerCase() || '',
+    JSON.stringify(aiAnalysis.structuredData || {}).toLowerCase(),
+  ].join(' ');
+
+  return searchableText;
+}
 
 /**
  * GET /api/documents
@@ -131,8 +155,8 @@ router.post('/search', async (req, res) => {
         filtered = filtered.filter(doc => {
           const a = doc.aiAnalysis || {};
 
-          // Build searchable text from metadata, summary, and structured data
-          const searchableText = [
+          // Use pre-computed searchableText if available (much faster!)
+          const searchableText = a.searchableText || [
             doc.filename?.toLowerCase() || '',
             doc.displayName?.toLowerCase() || '',
             doc.category?.toLowerCase() || '',
@@ -156,6 +180,13 @@ router.post('/search', async (req, res) => {
 
     switch (type) {
       case 'documents': {
+        // Check cache first
+        const cacheKey = { category, timeRange };
+        const cachedResult = getCachedResults(query, uid, cacheKey);
+        if (cachedResult) {
+          return res.json(cachedResult);
+        }
+
         let firestoreQuery = firestore.collection('documents')
           .where('userId', '==', uid)
           .orderBy('uploadDate', 'desc')  // Order by most recent first
@@ -173,14 +204,14 @@ router.post('/search', async (req, res) => {
         documents = applyTimeFilter(documents);
         console.log(`  After time filter: ${documents.length} documents`);
 
-        // Apply keyword filter if keywords exist (with medical terminology synonym expansion)
+        // Apply keyword filter if keywords exist (with medical terminology synonym expansion + stemming)
         if (keywords && keywords.length > 0) {
           const beforeKeywordFilter = documents.length;
           documents = documents.filter(doc => {
             const a = doc.aiAnalysis || {};
 
-            // Build searchable text from metadata, summary, and structured data
-            const searchableText = [
+            // Use pre-computed searchableText if available (much faster!)
+            const searchableText = a.searchableText || [
               doc.filename?.toLowerCase() || '',
               doc.displayName?.toLowerCase() || '',
               doc.category?.toLowerCase() || '',
@@ -199,14 +230,65 @@ router.post('/search', async (req, res) => {
           console.log(`  After keyword filter: ${documents.length} documents (filtered out ${beforeKeywordFilter - documents.length})`);
         }
 
+        // Apply fuzzy search if we have keywords and got few or no results
+        // This catches typos and variations that exact matching missed
+        if (keywords && keywords.length > 0 && documents.length < 5) {
+          console.log(`  Few results (${documents.length}), applying fuzzy search...`);
+
+          // Get all documents (before keyword filter) for fuzzy matching
+          let allDocs = snapshot.docs.map(doc => doc.data());
+          allDocs = applyTimeFilter(allDocs);
+
+          // Extract main search terms (first term from each keyword group)
+          const searchTerms = keywords.map(group => group[0]).join(' ');
+
+          // Configure Fuse.js for fuzzy matching
+          const fuse = new Fuse(allDocs, {
+            keys: [
+              { name: 'filename', weight: 0.3 },
+              { name: 'displayName', weight: 0.4 },
+              { name: 'category', weight: 0.2 },
+              { name: 'notes', weight: 0.1 },
+              { name: 'aiAnalysis.searchSummary', weight: 0.2 },
+            ],
+            threshold: 0.3,  // 0.0 = perfect match, 1.0 = match anything
+            includeScore: true,
+            ignoreLocation: true,
+            minMatchCharLength: 2,
+          });
+
+          const fuzzyResults = fuse.search(searchTerms);
+
+          // Add fuzzy results that aren't already in exact matches
+          const existingIds = new Set(documents.map(d => d.id));
+          fuzzyResults.forEach(result => {
+            if (!existingIds.has(result.item.id) && documents.length < 20) {
+              documents.push(result.item);
+              existingIds.add(result.item.id);
+            }
+          });
+
+          console.log(`  After fuzzy search: ${documents.length} documents`);
+        }
+
+        // Apply relevance ranking (sorts by relevance score, then date)
+        documents = rankDocuments(documents, keywords);
+        console.log(`  Documents ranked by relevance`);
+
         console.log(`Document search for "${query}" returned ${documents.length} documents. No AI was used.`);
 
-        return res.json({
+        // Prepare result
+        const result = {
           type: 'documents',
           query,
           results: documents,
           count: documents.length,
-        });
+        };
+
+        // Cache the result for future requests
+        setCachedResults(query, uid, result, cacheKey);
+
+        return res.json(result);
       }
       
 
@@ -227,8 +309,22 @@ router.post('/search', async (req, res) => {
         // For AI queries, apply time filter (and keyword filter only if no category identified)
         documents = filterDocumentsForAI(documents);
 
-        const summaryResult = await getAISummary(query, documents);
-        return res.json({ type: 'summary', query, ...summaryResult });
+        try {
+          const summaryResult = await getAISummary(query, documents);
+          return res.json({ type: 'summary', query, ...summaryResult });
+        } catch (aiError) {
+          console.warn('AI summary failed, falling back to document list:', aiError.message);
+          // Fallback: return documents instead of AI summary
+          const rankedDocs = rankDocuments(documents, keywords);
+          return res.json({
+            type: 'documents',
+            query,
+            results: rankedDocs,
+            count: rankedDocs.length,
+            fallback: true,
+            fallbackReason: 'AI service temporarily unavailable'
+          });
+        }
       }
       case 'answer': {
         let firestoreQuery = firestore.collection('documents')
@@ -245,8 +341,22 @@ router.post('/search', async (req, res) => {
         // For AI queries, apply time filter (and keyword filter only if no category identified)
         documents = filterDocumentsForAI(documents);
 
-        const answerResult = await getAIAnswer(query, documents);
-        return res.json({ type: 'answer', query, ...answerResult });
+        try {
+          const answerResult = await getAIAnswer(query, documents);
+          return res.json({ type: 'answer', query, ...answerResult });
+        } catch (aiError) {
+          console.warn('AI answer failed, falling back to document list:', aiError.message);
+          // Fallback: return documents instead of AI answer
+          const rankedDocs = rankDocuments(documents, keywords);
+          return res.json({
+            type: 'documents',
+            query,
+            results: rankedDocs,
+            count: rankedDocs.length,
+            fallback: true,
+            fallbackReason: 'AI service temporarily unavailable'
+          });
+        }
       }
 
       default:
@@ -350,7 +460,7 @@ async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
     console.log('Search summary generated.');
     console.log(`  Summary length: ${searchSummary.length} characters`);
 
-    // Update document with analysis results
+    // Prepare analysis results
     const analysisResults = {
       displayName: categorization.title,
       category: categorization.category,
@@ -362,8 +472,24 @@ async function analyzeDocumentAsync(documentId, fileBuffer, mimeType) {
       analyzedAt: FieldValue.serverTimestamp(),
     };
 
+    // Compute searchable text for fast searching (pre-compute to avoid JSON.stringify on every search)
+    // We need to get the full document first to include filename and notes
+    const docSnapshot = await docRef.get();
+    const currentDoc = docSnapshot.data();
+    const docWithUpdates = {
+      ...currentDoc,
+      ...analysisResults,
+    };
+    const searchableText = computeSearchableText(docWithUpdates);
+
+    // Add searchableText to aiAnalysis
+    analysisResults.aiAnalysis.searchableText = searchableText;
+
     await docRef.update(analysisResults);
     console.log(`Background AI analysis completed successfully for document ${documentId}`);
+
+    // Invalidate search cache for this user (new document added)
+    invalidateUserCache(currentDoc.userId);
 
   } catch (error) {
     console.error(`Background AI analysis failed for document ${documentId}:`, error);
@@ -520,7 +646,10 @@ router.delete('/:id', async (req, res) => {
       return res.status(500).json({ error: 'Failed to delete document metadata.' });
     }
 
-    // 5. Return success response
+    // 5. Invalidate search cache for this user (since document was deleted)
+    invalidateUserCache(uid);
+
+    // 6. Return success response
     console.log(`User ${uid} successfully deleted document ${id}.`);
     res.status(200).json({
       success: true,
@@ -610,10 +739,41 @@ router.patch('/:id', async (req, res) => {
     // 4. Add lastModified timestamp
     updateData.lastModified = FieldValue.serverTimestamp();
 
-    // 5. Update Firestore
+    // 5. Recompute searchableText if any searchable field was updated
+    const searchableFieldsUpdated = ['displayName', 'category', 'notes', 'aiAnalysis.structuredData'].some(
+      field => updateData.hasOwnProperty(field)
+    );
+
+    if (searchableFieldsUpdated) {
+      // Get the document with updates applied to compute new searchable text
+      const docWithUpdates = { ...documentData };
+
+      // Apply updates to the copy
+      Object.keys(updateData).forEach(key => {
+        if (key.includes('.')) {
+          // Handle nested fields like 'aiAnalysis.structuredData'
+          const [parent, child] = key.split('.');
+          if (!docWithUpdates[parent]) docWithUpdates[parent] = {};
+          docWithUpdates[parent][child] = updateData[key];
+        } else {
+          docWithUpdates[key] = updateData[key];
+        }
+      });
+
+      // Compute new searchable text
+      const searchableText = computeSearchableText(docWithUpdates);
+      updateData['aiAnalysis.searchableText'] = searchableText;
+
+      console.log(`Recomputed searchableText for document ${id}`);
+    }
+
+    // 6. Update Firestore
     await docRef.update(updateData);
 
-    // 6. Return updated document
+    // 7. Invalidate search cache for this user (since document changed)
+    invalidateUserCache(uid);
+
+    // 8. Return updated document
     const updatedDoc = await docRef.get();
     res.json(updatedDoc.data());
 

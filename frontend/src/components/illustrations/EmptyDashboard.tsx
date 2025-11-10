@@ -8,10 +8,9 @@ export const EmptyDashboard: React.FC<React.SVGProps<SVGSVGElement>> = (props) =
       <rect x="230" y="130" width="40" height="40" rx="10" className="text-emerald-100 dark:text-emerald-900/50" />
       <path d="M150,20 L160,40 L180,50 L160,60 L150,80 L140,60 L120,50 L140,40 Z" className="text-amber-100 dark:text-amber-900/50" />
 
-      {/* Main folder icon */}
+      {/* Main folder icon - outline only */}
       <g className="text-slate-300 dark:text-slate-700">
-        <path d="M40 180 H260 V80 H140 L120 60 H40 Z" fill="currentColor" />
-        <path d="M40 180 H260 V80 H140 L120 60 H40 Z" stroke="currentColor" strokeLinejoin="round" strokeLinecap="round" />
+        <path d="M40 180 H260 V80 H140 L120 60 H40 Z" fill="none" stroke="currentColor" strokeLinejoin="round" strokeLinecap="round" />
       </g>
       
       {/* Document icon */}

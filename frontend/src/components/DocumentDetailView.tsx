@@ -13,6 +13,7 @@ import DocumentPreviewModal from './DocumentPreviewModal';
 import { CalendarIcon } from './icons/CalendarIcon';
 import { categoryInfoMap } from '../utils/category-info';
 import { ClipboardNotesIcon } from './icons/ClipboardNotesIcon';
+import { getDocumentDate } from '../utils/health-helpers';
 
 interface DocumentDetailViewProps {
   document: DocumentFile;
@@ -182,101 +183,91 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
             
             {/* Document Overview & Key Info */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Metadata & Actions */}
+                {/* Left Column: Metadata & Document Preview */}
                 <div className="lg:col-span-1 space-y-6">
                     <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700/80 rounded-2xl p-5 shadow-sm">
                         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Document Details</h2>
                         <div className="space-y-4 text-sm">
+                            {/* Document Date (if extracted) */}
+                            {getDocumentDate(document) && (
+                              <div className="flex items-start">
+                                  <CalendarIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mt-0.5 mr-3 flex-shrink-0" />
+                                  <div>
+                                      <p className="font-semibold text-slate-700 dark:text-slate-300">Document Date</p>
+                                      <p className="text-slate-500 dark:text-slate-400">
+                                        {getDocumentDate(document)!.toLocaleDateString()} ({formatRelativeTime(getDocumentDate(document)!)})
+                                      </p>
+                                  </div>
+                              </div>
+                            )}
+
+                            {/* Upload Date */}
                             <div className="flex items-start">
                                 <CalendarIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mt-0.5 mr-3 flex-shrink-0" />
                                 <div>
-                                    <p className="font-semibold text-slate-700 dark:text-slate-300">Upload Date</p>
-                                    <p className="text-slate-500 dark:text-slate-400">{new Date(document.uploadDate).toLocaleDateString()} ({formatRelativeTime(new Date(document.uploadDate))})</p>
+                                    <p className="font-semibold text-slate-700 dark:text-slate-300">
+                                      {getDocumentDate(document) ? 'Uploaded' : 'Upload Date'}
+                                    </p>
+                                    <p className="text-slate-500 dark:text-slate-400">
+                                      {new Date(document.uploadDate).toLocaleDateString()} ({formatRelativeTime(new Date(document.uploadDate))})
+                                    </p>
                                 </div>
                             </div>
 
                             {isEditing && (
                               <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
                                 <p className="text-xs text-amber-800 dark:text-amber-200">
-                                  <strong>Note:</strong> Original filename, file type, and upload date cannot be changed.
+                                  <strong>Note:</strong> Original filename, file type, and dates cannot be changed.
                                 </p>
                               </div>
                             )}
-                        </div>
-                    </div>
 
-                    {/* Document Preview Thumbnail */}
-                    <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700/80 rounded-2xl p-5 shadow-sm">
-                        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Original Document</h2>
-                        <div
-                            onClick={() => setIsModalOpen(true)}
-                            className="relative group cursor-pointer rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-teal-500 transition-all hover:shadow-lg max-w-[200px] mx-auto"
-                        >
-                            {document.downloadUrl ? (
-                                document.filename.endsWith('.pdf') ? (
-                                    <div className="aspect-[3/4] relative bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
-                                        {/* Blurred background pattern */}
-                                        <div className="absolute inset-0 opacity-30">
-                                            <div className="absolute top-4 left-4 right-4 h-2 bg-slate-300 dark:bg-slate-600 rounded blur-sm" />
-                                            <div className="absolute top-8 left-4 right-8 h-2 bg-slate-300 dark:bg-slate-600 rounded blur-sm" />
-                                            <div className="absolute top-12 left-4 right-12 h-2 bg-slate-300 dark:bg-slate-600 rounded blur-sm" />
-                                            <div className="absolute top-20 left-4 right-4 h-1.5 bg-slate-300 dark:bg-slate-600 rounded blur-sm" />
-                                            <div className="absolute top-24 left-4 right-6 h-1.5 bg-slate-300 dark:bg-slate-600 rounded blur-sm" />
-                                            <div className="absolute top-28 left-4 right-10 h-1.5 bg-slate-300 dark:bg-slate-600 rounded blur-sm" />
-                                            <div className="absolute top-32 left-4 right-8 h-1.5 bg-slate-300 dark:bg-slate-600 rounded blur-sm" />
-                                        </div>
-                                        <div className="absolute inset-0 backdrop-blur-[2px] bg-white/30 dark:bg-black/30" />
-                                        <div className="relative h-full flex items-center justify-center">
-                                            <div className="text-center">
-                                                <div className="w-12 h-14 mx-auto mb-2 bg-slate-600 dark:bg-slate-400 rounded-sm flex items-center justify-center shadow-sm">
-                                                    <span className="text-white dark:text-slate-900 font-bold text-xs">PDF</span>
-                                                </div>
-                                                <p className="text-xs text-slate-600 dark:text-slate-400 px-2 truncate">{document.filename}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="relative aspect-[3/4]">
-                                        <img
-                                            src={document.downloadUrl}
-                                            alt={document.filename}
-                                            className="w-full h-full object-cover blur-[2px]"
-                                        />
-                                        <div className="absolute inset-0 bg-white/20 dark:bg-black/20 backdrop-blur-[1px]" />
-                                    </div>
-                                )
-                            ) : (
-                                <div className="aspect-[3/4] bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                                    <p className="text-slate-500 dark:text-slate-400 text-xs">No preview</p>
-                                </div>
-                            )}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 dark:group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
-                                <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-110">
-                                    <div className="bg-white dark:bg-slate-800 rounded-full p-2.5 shadow-xl">
-                                        <EyeIcon className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-                                    </div>
-                                </div>
+                            {/* Compact Document Preview (like email attachment) */}
+                            <div className="pt-4 border-t border-stone-200 dark:border-slate-700">
+                              <div
+                                  onClick={() => setIsModalOpen(true)}
+                                  className="group flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-teal-500 dark:hover:border-teal-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-all"
+                              >
+                                  {/* Small thumbnail/icon */}
+                                  <div className="flex-shrink-0 w-12 h-16 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
+                                      {document.downloadUrl ? (
+                                          document.filename.endsWith('.pdf') ? (
+                                              <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
+                                                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">PDF</span>
+                                              </div>
+                                          ) : (
+                                              <img src={document.downloadUrl} alt={document.filename} className="w-full h-full object-cover" />
+                                          )
+                                      ) : (
+                                          <div className="w-full h-full bg-slate-100 dark:bg-slate-800" />
+                                      )}
+                                  </div>
+
+                                  {/* File info */}
+                                  <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{document.filename}</p>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Click to view full document</p>
+                                  </div>
+
+                                  {/* View icon */}
+                                  <EyeIcon className="w-5 h-5 text-slate-400 group-hover:text-teal-500 flex-shrink-0 transition-colors" />
+                              </div>
                             </div>
                         </div>
-                        <button onClick={() => setIsModalOpen(true)} className="mt-3 w-full text-xs font-medium text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 transition-colors">
-                            View full document →
-                        </button>
                     </div>
                 </div>
 
-                {/* Right Column: Key Information & Notes */}
+                {/* Right Column: Key Information */}
                 <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700/80 rounded-2xl shadow-sm">
                         <div className="p-5">
                             {isEditing ? (
                               <>
                                 <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Edit Extracted Details</h2>
-                                <EditableStructuredData 
-                                  data={editedStructuredData} 
-                                  setData={setEditedStructuredData} 
+                                <EditableStructuredData
+                                  data={editedStructuredData}
+                                  setData={setEditedStructuredData}
                                   category={editedCategory}
-                                  notes={editedNotes}
-                                  onNotesChange={setEditedNotes}
                                 />
                               </>
                             ) : (
@@ -284,17 +275,36 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                             )}
                         </div>
                     </div>
-                    
-                    {/* Notes Display */}
-                    {!isEditing && document.notes && (
-                        <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700/80 rounded-2xl shadow-sm p-5">
-                            <div className="flex items-center mb-3">
+
+                    {/* Notes Section - Always visible */}
+                    <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700/80 rounded-2xl shadow-sm p-5">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center">
                                 <ClipboardNotesIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mr-3" />
                                 <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Notes</h2>
                             </div>
-                            <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{document.notes}</p>
+                            {!isEditing && onUpdate && (
+                                <button
+                                    onClick={handleStartEdit}
+                                    className="text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium"
+                                >
+                                    {document.notes ? 'Edit' : 'Add notes'}
+                                </button>
+                            )}
                         </div>
-                    )}
+                        {isEditing ? (
+                            <textarea
+                                value={editedNotes}
+                                onChange={(e) => setEditedNotes(e.target.value)}
+                                placeholder="Add any additional notes or comments about this document..."
+                                className="w-full bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-md p-3 text-base text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none resize-y min-h-[120px]"
+                            />
+                        ) : document.notes ? (
+                            <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{document.notes}</p>
+                        ) : (
+                            <p className="text-slate-400 dark:text-slate-500 text-sm italic">No notes added yet. Click "Add notes" to get started.</p>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

@@ -11,6 +11,7 @@ interface DocumentUploaderProps {
   onError?: (message: string) => void;
   compact?: boolean;
   uploadedDocuments?: DocumentFile[];  // To track processing status
+  onSelectDocument?: (id: string) => void;  // Navigate to document
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
@@ -31,7 +32,8 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   onUploadComplete,
   onError,
   compact = false,
-  uploadedDocuments = []
+  uploadedDocuments = [],
+  onSelectDocument
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -51,10 +53,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
               : p
           ));
 
-          // Clear this specific progress item after a short delay
-          setTimeout(() => {
-            setUploadProgress(prev => prev.filter(p => p.documentId !== progress.documentId));
-          }, 2000);
+          // No longer auto-remove - let user dismiss or click to view
         }
       }
     });
@@ -199,12 +198,25 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
       case 'uploading':
         return 'Uploading...';
       case 'processing':
-        return 'AI processing...';
+        return 'AI analyzing...';
       case 'complete':
-        return 'Upload successful!';
+        return 'Ready to view!';
       case 'error':
         return 'Failed';
     }
+  };
+
+  const handleDocumentClick = (progress: UploadProgress) => {
+    if (progress.status === 'complete' && progress.documentId && onSelectDocument) {
+      onSelectDocument(progress.documentId);
+      // Remove from progress list after navigating
+      setUploadProgress(prev => prev.filter(p => p.documentId !== progress.documentId));
+    }
+  };
+
+  const handleDismiss = (progressToRemove: UploadProgress, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    setUploadProgress(prev => prev.filter(p => p !== progressToRemove));
   };
 
   return (
@@ -232,7 +244,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
           accept="image/png, image/jpeg, application/pdf"
           disabled={isUploading}
         />
-        {isUploading ? (
+        {isUploading && uploadProgress.length === 0 ? (
           <>
             <div className="animate-spin rounded-full h-10 w-10 border-4 border-sky-500 border-t-transparent mx-auto" />
             <span className="mt-2 block text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -258,7 +270,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
           {uploadProgress.map((progress, idx) => (
             <div
               key={idx}
-              className="flex items-center space-x-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-stone-200 dark:border-slate-700"
+              onClick={() => handleDocumentClick(progress)}
+              className={`relative flex items-center space-x-3 p-3 bg-white dark:bg-slate-800 rounded-lg border border-stone-200 dark:border-slate-700 transition-all duration-200 ${
+                progress.status === 'complete'
+                  ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-teal-400 dark:hover:border-teal-500 hover:shadow-md'
+                  : ''
+              }`}
             >
               <div className="flex-shrink-0">
                 {getStatusIcon(progress.status)}
@@ -268,11 +285,25 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                   {progress.filename}
                 </p>
                 <p className={`text-xs ${
-                  progress.status === 'error' ? 'text-red-500' : 'text-slate-500 dark:text-slate-400'
+                  progress.status === 'error' ? 'text-red-500' :
+                  progress.status === 'complete' ? 'text-green-600 dark:text-green-400 font-medium' :
+                  'text-slate-500 dark:text-slate-400'
                 }`}>
                   {progress.error || getStatusText(progress.status)}
                 </p>
               </div>
+              {/* Dismiss button for complete or error status */}
+              {(progress.status === 'complete' || progress.status === 'error') && (
+                <button
+                  onClick={(e) => handleDismiss(progress, e)}
+                  className="flex-shrink-0 p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                  aria-label="Dismiss"
+                >
+                  <svg className="w-4 h-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
           ))}
         </div>

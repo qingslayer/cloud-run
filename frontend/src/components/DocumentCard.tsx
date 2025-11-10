@@ -4,7 +4,7 @@ import { DownloadIcon } from './icons/DownloadIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { PencilIcon } from './icons/PencilIcon';
 import { categoryInfoMap } from '../utils/category-info';
-import { generateSnippet } from '../utils/health-helpers';
+import { generateSnippet, getDocumentDate } from '../utils/health-helpers';
 import { formatRelativeTime } from '../utils/formatters';
 
 interface DocumentCardProps {
@@ -97,7 +97,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
       className={`group relative flex items-center p-4 rounded-2xl shadow-sm transition-all duration-300 border
           bg-white dark:bg-slate-800/50
           border-stone-200/80 dark:border-slate-800
-          cursor-pointer hover:shadow-md hover:border-teal-400/80 dark:hover:border-teal-500/80 hover:bg-stone-50/50 dark:hover:bg-slate-800`}
+          cursor-pointer hover:shadow-md hover:border-teal-400/80 dark:hover:border-teal-500/80 hover:bg-stone-50/50 dark:hover:bg-slate-800 hover:scale-[1.01]`}
     >
       <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mr-4 ${lightColor}`}>
         <CategoryIcon className={`w-6 h-6 ${color}`} />
@@ -119,8 +119,10 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
         )}
       </div>
 
-      <div className="flex-shrink-0 ml-4 flex items-center space-x-4">
-        <p className="text-sm text-slate-500 dark:text-slate-400 hidden md:block">{formatRelativeTime(new Date(document.uploadDate))}</p>
+      <div className="flex-shrink-0 ml-auto flex items-center space-x-4">
+        <p className="text-sm text-slate-500 dark:text-slate-400 hidden md:block whitespace-nowrap">
+          {formatRelativeTime(getDocumentDate(document) || new Date(document.uploadDate))}
+        </p>
         <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {onEdit && (
                 <button

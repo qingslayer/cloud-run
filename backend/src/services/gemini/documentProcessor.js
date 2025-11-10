@@ -64,7 +64,7 @@ Categories: ${DOCUMENT_CATEGORIES.join(', ')}
 ${text.substring(0, 10000)}
 --- END DOCUMENT TEXT ---
 
-Respond with a JSON object containing "title" and "category". The title should be descriptive and include relevant dates if found (e.g., "Complete Blood Count - Mar 15, 2024"). The category must be one of the exact strings from the list provided.`;
+Respond with a JSON object containing "title" and "category". The title should be descriptive but DO NOT include dates (e.g., "Complete Blood Count", "Chest X-Ray Report", "Lipitor Prescription"). The category must be one of the exact strings from the list provided.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -107,6 +107,7 @@ function getResponseSchemaForCategory(category) {
       return {
         type: Type.OBJECT,
         properties: {
+          date: { type: Type.STRING, description: 'Test or collection date (format: YYYY-MM-DD)' },
           results: {
             type: Type.ARRAY,
             items: {
@@ -120,12 +121,14 @@ function getResponseSchemaForCategory(category) {
               required: ['testName', 'value', 'unit', 'referenceRange']
             }
           }
-        }
+        },
+        required: ['results']
       };
     case 'Prescriptions':
       return {
         type: Type.OBJECT,
         properties: {
+          date: { type: Type.STRING, description: 'Prescription date (format: YYYY-MM-DD)' },
           prescriptions: {
             type: Type.ARRAY,
             items: {
@@ -139,12 +142,14 @@ function getResponseSchemaForCategory(category) {
               required: ['medication', 'dosage', 'frequency']
             }
           }
-        }
+        },
+        required: ['prescriptions']
       };
     case 'Imaging Reports':
       return {
         type: Type.OBJECT,
         properties: {
+          date: { type: Type.STRING, description: 'Exam or report date (format: YYYY-MM-DD)' },
           procedure: { type: Type.STRING },
           findings: { type: Type.STRING },
           impression: { type: Type.STRING },
@@ -204,13 +209,13 @@ export async function extractStructuredData(extractedText, category) {
 **OUTPUT FORMAT FOR THIS CATEGORY:**
 Return a JSON object with a "details" array containing key-value pairs for each piece of information.
 Example: { "details": [
+  { "key": "date", "value": "2024-01-15" },
   { "key": "Patient Name", "value": "John Doe" },
-  { "key": "Visit Date", "value": "January 15, 2024" },
   { "key": "Chief Complaint", "value": "Headache" },
   { "key": "Provider", "value": "Dr. Smith" }
 ]}
 
-Use clear, human-readable field names in the "key" property. Extract each distinct piece of information as a separate object in the details array.
+IMPORTANT: Always include a "date" key with the document/visit/service date in YYYY-MM-DD format as the first item. Use clear, human-readable field names for other keys. Extract each distinct piece of information as a separate object in the details array.
 ` : '';
 
   const prompt = `You are an expert medical data extraction specialist. Your task is to parse the provided medical document text and extract ALL clinically relevant information into a structured JSON object.
@@ -222,7 +227,7 @@ ${flexibleInstructions}
 **Extraction Rules:**
 
 1.  **BE COMPREHENSIVE WITH CLINICAL DATA:** Extract ALL available medical details. Do not summarize or pick and choose. For example, if there are multiple test results or medications, extract every single one.
-    - **Medical Dates:** The date the test, procedure, or consultation occurred.
+    - **IMPORTANT - Document Date:** ALWAYS extract the document date as a top-level "date" field in YYYY-MM-DD format. Look for test dates, collection dates, report dates, exam dates, visit dates, or prescription dates. This is the date the medical event occurred, NOT the report generation date. If multiple dates exist, use the most clinically relevant one (e.g., collection date for labs, exam date for imaging).
     - **Providers/Doctors:** The names of attending physicians or specialists mentioned.
     - **Diagnoses and Findings:** All specific medical conditions, observations, or results.
     - **Test Results & Values:** For lab reports, capture every test name, its corresponding value, units, and reference range.

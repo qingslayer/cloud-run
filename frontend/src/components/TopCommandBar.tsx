@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { User } from 'firebase/auth';
 import { UserCircleIcon } from './icons/UserCircleIcon';
 import UserMenu from './UserMenu';
 import { View, Theme } from '../types';
@@ -14,6 +15,7 @@ interface TopCommandBarProps {
   toggleRightPanel: () => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  currentUser: User | null;
   uploadButton?: React.ReactNode;
 }
 
@@ -39,7 +41,7 @@ const NavItem: React.FC<{
     );
 };
 
-const TopCommandBar: React.FC<TopCommandBarProps> = ({ activeView, setView, onSearch, onLogout, toggleRightPanel, theme, setTheme, uploadButton }) => {
+const TopCommandBar: React.FC<TopCommandBarProps> = ({ activeView, setView, onSearch, onLogout, toggleRightPanel, theme, setTheme, currentUser, uploadButton }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [query, setQuery] = useState('');
     const menuRef = useRef<HTMLDivElement>(null);
@@ -109,19 +111,24 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({ activeView, setView, onSe
         <div className="flex items-center space-x-3">
             {uploadButton}
             <div className="relative" ref={menuRef}>
-                <button 
+                <button
                     onClick={() => setIsMenuOpen(prev => !prev)}
-                    className="flex items-center justify-center w-11 h-11 rounded-full hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors"
+                    className="flex items-center justify-center w-11 h-11 rounded-full hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors overflow-hidden"
                 >
-                    <UserCircleIcon className="h-8 w-8 text-slate-500 dark:text-slate-400" />
+                    {currentUser?.photoURL ? (
+                        <img src={currentUser.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
+                    ) : (
+                        <UserCircleIcon className="h-8 w-8 text-slate-500 dark:text-slate-400" />
+                    )}
                 </button>
                 {isMenuOpen && (
-                    <UserMenu 
-                        onLogout={onLogout} 
+                    <UserMenu
+                        onLogout={onLogout}
                         setView={setView}
                         onClose={() => setIsMenuOpen(false)}
                         theme={theme}
                         setTheme={setTheme}
+                        currentUser={currentUser}
                     />
                 )}
             </div>

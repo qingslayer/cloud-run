@@ -18,11 +18,23 @@ export const formatRelativeTime = (date: Date): string => {
     const months = Math.round(days / 30);
     const years = Math.round(days / 365);
 
+    // If older than 1 year, show the actual date
+    if (days >= 365) {
+        return new Intl.DateTimeFormat('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        }).format(date);
+    }
+
+    // Otherwise show relative time
     if (seconds < 60) return 'just now';
     if (minutes < 60) return `${minutes} min ago`;
     if (hours < 24) return `${hours} hr ago`;
     if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
     if (months < 12) return `${months} month${months > 1 ? 's' : ''} ago`;
+
+    // Fallback (shouldn't reach here due to days >= 365 check above)
     return `${years} year${years > 1 ? 's' : ''} ago`;
 }
 

@@ -59,6 +59,7 @@ app.get('/health', (req, res) => {
 import authMiddleware from './middleware/auth.js';
 import documentsRouter from './routes/documents.js';
 import chatRouter from './routes/chat.js';
+import usersRouter from './routes/users.js';
 
 const apiRouter = express.Router();
 
@@ -68,6 +69,7 @@ apiRouter.use(authMiddleware);
 // Mount the modular routers
 apiRouter.use('/documents', documentsRouter);
 apiRouter.use('/chat', chatRouter);
+apiRouter.use('/users', usersRouter);
 
 // Mount the main API router
 app.use('/api', apiRouter);

@@ -1,5 +1,55 @@
 import { DocumentFile } from '../types';
 
+/**
+ * Extract the document date from AI-analyzed structured data.
+ * Returns null if no document date is found (doesn't fall back to upload date).
+ * Common field names: date, test_date, report_date, exam_date, service_date, prescription_date
+ */
+export const getDocumentDate = (document: DocumentFile): Date | null => {
+  if (!document.aiAnalysis?.structuredData) {
+    return null;
+  }
+
+  const data = document.aiAnalysis.structuredData;
+
+  // Common date field names in structured data
+  const dateFieldNames = [
+    'date',
+    'test_date',
+    'testDate',
+    'report_date',
+    'reportDate',
+    'exam_date',
+    'examDate',
+    'service_date',
+    'serviceDate',
+    'prescription_date',
+    'prescriptionDate',
+    'visit_date',
+    'visitDate',
+    'collection_date',
+    'collectionDate'
+  ];
+
+  // Try to find a date field
+  for (const fieldName of dateFieldNames) {
+    const dateValue = data[fieldName];
+    if (dateValue) {
+      try {
+        const parsedDate = new Date(dateValue);
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate;
+        }
+      } catch (e) {
+        // Continue to next field
+      }
+    }
+  }
+
+  // Return null if no valid date found
+  return null;
+};
+
 export const isOutOfRange = (valueStr: string, rangeStr: string): boolean => {
     try {
         if (!valueStr || !rangeStr) return false;

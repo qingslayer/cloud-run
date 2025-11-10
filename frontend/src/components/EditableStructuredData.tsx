@@ -6,8 +6,6 @@ import { InfoCircleIcon } from './icons/InfoCircleIcon';
 interface EditableStructuredDataProps {
   data: Record<string, any>;
   setData: React.Dispatch<React.SetStateAction<any>>;
-  notes: string;
-  onNotesChange: (value: string) => void;
   category?: string;
 }
 
@@ -19,7 +17,7 @@ const TextAreaField = (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>)
     <textarea {...props} className={`w-full bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-md p-2 text-base text-slate-800 dark:text-slate-200 focus:ring-sky-500 focus:border-sky-500 focus:outline-none resize-y min-h-[100px] ${props.className}`} />
 );
 
-const EditableStructuredData: React.FC<EditableStructuredDataProps> = ({ data, setData, notes, onNotesChange, category }) => {
+const EditableStructuredData: React.FC<EditableStructuredDataProps> = ({ data, setData, category }) => {
 
     if (!data) return <p className="text-center text-sm text-slate-500 dark:text-slate-400">No data was extracted. Please add details manually.</p>;
 
@@ -94,16 +92,6 @@ const EditableStructuredData: React.FC<EditableStructuredDataProps> = ({ data, s
                     </button>
                 </div>
             )}
-
-            {/* Notes field */}
-            <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-600 dark:text-slate-400">Additional Notes</label>
-                <TextAreaField
-                    placeholder="Add any additional notes or comments about this document..."
-                    value={notes}
-                    onChange={(e) => onNotesChange(e.target.value)}
-                />
-            </div>
         </div>
     );
 };

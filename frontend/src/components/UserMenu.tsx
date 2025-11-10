@@ -1,7 +1,7 @@
 import React from 'react';
+import { User } from 'firebase/auth';
 import { LogOutIcon } from './icons/LogOutIcon';
 import { View, Theme } from '../types';
-import ThemeToggle from './ThemeToggle';
 
 // Fix: Define CogIcon locally to resolve the module import error without adding a new file.
 const CogIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -16,26 +16,36 @@ interface UserMenuProps {
   onClose: () => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  currentUser: User | null;
 }
 
-const UserMenu: React.FC<UserMenuProps> = ({ onLogout, setView, onClose, theme, setTheme }) => {
-  
+const UserMenu: React.FC<UserMenuProps> = ({ onLogout, setView, onClose, theme, setTheme, currentUser }) => {
+
   const handleSettingsClick = () => {
     setView('settings');
     onClose();
   };
 
+  // Get user display info
+  const displayName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
+  const email = currentUser?.email || '';
+
   return (
     <div className="absolute top-full right-0 mt-2 w-64 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-stone-200/80 dark:border-slate-800 rounded-2xl shadow-lg animate-fade-in-fast z-50">
         <div className="p-2">
-            <div className="p-3">
-                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Demo User</p>
-                 <p className="text-xs text-slate-500 dark:text-slate-400">demo.user@healthvault.app</p>
+            <div className="p-3 flex items-center space-x-3">
+                {currentUser?.photoURL ? (
+                    <img src={currentUser.photoURL} alt="Profile" className="w-10 h-10 rounded-full" />
+                ) : (
+                    <div className="w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center text-white font-semibold">
+                        {displayName.charAt(0).toUpperCase()}
+                    </div>
+                )}
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{displayName}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{email}</p>
+                </div>
             </div>
-             <hr className="border-stone-200 dark:border-slate-800"/>
-             <div className="p-3">
-                <ThemeToggle theme={theme} setTheme={setTheme} />
-             </div>
              <hr className="border-stone-200 dark:border-slate-800"/>
             <div className="p-1">
                  <button onClick={handleSettingsClick} className="w-full text-left flex items-center space-x-3 p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors">

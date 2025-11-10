@@ -9,13 +9,15 @@ interface GlobalUploadButtonProps {
   onUpdateDocument: (id: string, updates: Partial<DocumentFile>) => void;
   onError?: (message: string) => void;
   documents?: DocumentFile[];  // Pass documents for tracking status
+  onSelectDocument?: (id: string) => void;  // Navigate to document
 }
 
 const GlobalUploadButton: React.FC<GlobalUploadButtonProps> = ({
   onFilesChange,
   onUpdateDocument,
   onError,
-  documents = []
+  documents = [],
+  onSelectDocument
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -53,6 +55,13 @@ const GlobalUploadButton: React.FC<GlobalUploadButtonProps> = ({
 
   const handleUploadComplete = () => {
     // Don't auto-close - let user see progress until documents are complete
+  };
+
+  const handleSelectDocument = (id: string) => {
+    if (onSelectDocument) {
+      onSelectDocument(id);
+      setIsOpen(false); // Close modal after navigating
+    }
   };
 
   return (
@@ -104,6 +113,7 @@ const GlobalUploadButton: React.FC<GlobalUploadButtonProps> = ({
               onError={onError}
               compact={true}
               uploadedDocuments={documents}
+              onSelectDocument={handleSelectDocument}
             />
           </div>
         </div>

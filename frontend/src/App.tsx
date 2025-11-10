@@ -410,7 +410,7 @@ const App: React.FC = () => {
                         viewedDocuments={viewedDocuments}
                    />;
         case 'settings':
-            return <Settings theme={theme} setTheme={setTheme} onDeleteAllRecords={handleDeleteAllRecords} />;
+            return <Settings theme={theme} setTheme={setTheme} onDeleteAllRecords={handleDeleteAllRecords} currentUser={currentUser} />;
         case 'search':
             return <SearchResultsPage
                         results={pageSearchResults}
@@ -432,12 +432,14 @@ const App: React.FC = () => {
           theme={theme}
           setTheme={setTheme}
           toggleRightPanel={() => setIsRightPanelOpen(prev => !prev)}
+          currentUser={currentUser}
           uploadButton={
             <GlobalUploadButton
               onFilesChange={handleFilesChange}
               onUpdateDocument={handleUpdateDocument}
               onError={error}
               documents={documents}
+              onSelectDocument={handleSelectDocument}
             />
           }
         />

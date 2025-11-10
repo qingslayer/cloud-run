@@ -4,6 +4,7 @@ import DocumentCard from './DocumentCard';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { SearchIcon } from './icons/SearchIcon';
 import { renderMarkdown } from '../utils/formatters';
+import { getDocumentDate } from '../utils/health-helpers';
 
 interface SearchResultsPageProps {
   results: UniversalSearchResult | null;
@@ -165,7 +166,7 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
                               {/* Date */}
                               {doc.uploadDate && (
                                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
-                                  {new Date(doc.uploadDate).toLocaleDateString('en-US', {
+                                  {(getDocumentDate(doc) || new Date(doc.uploadDate)).toLocaleDateString('en-US', {
                                     month: 'short',
                                     day: 'numeric',
                                     year: 'numeric'

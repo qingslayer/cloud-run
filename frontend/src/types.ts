@@ -8,6 +8,7 @@ export interface DocumentFile {
   uploadDate: Date;
   status?: 'complete';
   downloadUrl?: string; // Signed URL for viewing/downloading (only in GET /:id)
+  notes?: string; // User-added notes about the document
 
   // AI analysis results (only present after analysis completes)
   aiAnalysis?: {

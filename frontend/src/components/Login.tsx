@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { LogInIcon } from './icons/LogInIcon';
 import { HealthVaultLogo } from './icons/HealthVaultLogo';
 import { WelcomeIllustration } from './illustrations/WelcomeIllustration';
 import { LockClosedIcon } from './icons/LockClosedIcon';
+import { initializeUserProfile } from '../services/userService';
 
 // Demo account credentials
 const DEMO_EMAIL = 'qhhou3+healthvault@gmail.com';
@@ -26,6 +27,9 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showEmailLogin, setShowEmailLogin] = useState(false);
+  const [isSignUpMode, setIsSignUpMode] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
@@ -82,21 +86,77 @@ const Login: React.FC = () => {
   const handleDemoLogin = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // Sign in with real Firebase credentials
       await signInWithEmailAndPassword(auth, DEMO_EMAIL, DEMO_PASSWORD);
       // Firebase onAuthStateChanged will handle the rest
     } catch (error: any) {
       console.error('Error signing in with demo account:', error);
-      
+
       let errorMessage = 'Failed to sign in with demo account.';
       if (error.code === 'auth/user-not-found') {
         errorMessage = 'Demo account not found. Please contact support.';
       } else if (error.code === 'auth/wrong-password') {
         errorMessage = 'Demo account credentials are invalid. Please contact support.';
       }
-      
+
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!firstName || !lastName || !email || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Create user account
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+      // Set display name
+      const displayName = `${firstName.trim()} ${lastName.trim()}`;
+      await updateProfile(userCredential.user, {
+        displayName: displayName
+      });
+
+      // Initialize user profile in Firestore
+      try {
+        await initializeUserProfile();
+      } catch (profileError) {
+        console.error('Error initializing user profile:', profileError);
+        // Don't fail the sign-up if profile initialization fails
+      }
+
+      // Firebase onAuthStateChanged will handle the rest
+    } catch (error: any) {
+      console.error('Error signing up:', error);
+
+      // Provide user-friendly error messages
+      let errorMessage = 'Failed to create account. Please try again.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'An account with this email already exists.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Email/password sign-up is not enabled.';
+      }
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -155,7 +215,31 @@ const Login: React.FC = () => {
               Sign in with Email
             </button>
           ) : (
-            <form onSubmit={handleEmailPasswordSignIn} className="space-y-3">
+            <form onSubmit={isSignUpMode ? handleSignUp : handleEmailPasswordSignIn} className="space-y-3">
+              {isSignUpMode && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      placeholder="First name"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 text-base bg-white dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 rounded-xl border border-stone-300 dark:border-slate-700 focus:outline-none focus:ring-4 focus:ring-teal-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      required
+                    />
+                    <input
+                      type="text"
+                      placeholder="Last name"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 text-base bg-white dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 rounded-xl border border-stone-300 dark:border-slate-700 focus:outline-none focus:ring-4 focus:ring-teal-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      required
+                    />
+                  </div>
+                </>
+              )}
               <div>
                 <input
                   type="email"
@@ -184,20 +268,36 @@ const Login: React.FC = () => {
                   disabled={isLoading}
                   className="flex-1 px-6 py-3 text-base font-semibold bg-teal-500 dark:bg-teal-600 text-white rounded-xl hover:bg-teal-600 dark:hover:bg-teal-700 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-teal-500/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? 'Signing in...' : 'Sign In'}
+                  {isLoading ? (isSignUpMode ? 'Creating account...' : 'Signing in...') : (isSignUpMode ? 'Create Account' : 'Sign In')}
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setShowEmailLogin(false);
+                    setIsSignUpMode(false);
                     setEmail('');
                     setPassword('');
+                    setFirstName('');
+                    setLastName('');
                     setError(null);
                   }}
                   disabled={isLoading}
                   className="px-6 py-3 text-base font-semibold bg-stone-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-stone-300 dark:hover:bg-slate-700 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-teal-500/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
+                </button>
+              </div>
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUpMode(!isSignUpMode);
+                    setError(null);
+                  }}
+                  disabled={isLoading}
+                  className="text-sm text-teal-600 dark:text-teal-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSignUpMode ? 'Already have an account? Sign in' : 'New here? Create an account'}
                 </button>
               </div>
             </form>
@@ -208,20 +308,36 @@ const Login: React.FC = () => {
             <button
               onClick={handleDemoLogin}
               disabled={isLoading}
-              className="w-full flex items-center justify-center px-6 py-3 text-sm font-medium bg-stone-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-stone-300 dark:hover:bg-slate-700 transition-all duration-200 border border-stone-300 dark:border-slate-600 focus:outline-none focus:ring-4 focus:ring-teal-500/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center px-6 py-3 text-base font-semibold bg-stone-200 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-stone-300 dark:hover:bg-slate-700 transition-all duration-200 border border-stone-300 dark:border-slate-600 focus:outline-none focus:ring-4 focus:ring-teal-500/50 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <LogInIcon className="h-4 w-4 mr-2" />
+              <LogInIcon className="h-5 w-5 mr-3" />
               {isLoading ? 'Signing in...' : 'Continue as Demo User'}
             </button>
           </div>
         </div>
-        
+
         {error && (
           <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
             <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
           </div>
         )}
-        
+
+        {/* Helper text with create account link */}
+        <p className="mt-6 text-sm text-slate-600 dark:text-slate-400 text-center">
+          New here? Sign in with Google or{' '}
+          <button
+            onClick={() => {
+              setShowEmailLogin(true);
+              setIsSignUpMode(true);
+            }}
+            disabled={isLoading}
+            className="text-teal-600 dark:text-teal-400 hover:underline font-medium disabled:opacity-50"
+          >
+            create an account
+          </button>
+          .
+        </p>
+
         <div className="mt-8 flex items-center justify-center space-x-2">
             <LockClosedIcon className="w-4 h-4 text-slate-400 dark:text-slate-500" />
             <p className="text-xs text-slate-500 dark:text-slate-400">

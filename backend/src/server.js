@@ -4,8 +4,12 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables (only in non-production environments)
+// In production (Cloud Run), environment variables are set by Cloud Run
+// and should not be overwritten by .env file
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 // Initialize Express app
 const app = express();

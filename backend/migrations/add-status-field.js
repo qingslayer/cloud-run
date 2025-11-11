@@ -11,8 +11,11 @@
 import { Firestore } from '@google-cloud/firestore';
 import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables (only in non-production environments)
+// In production, environment variables are set by the environment
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const firestore = new Firestore();
 

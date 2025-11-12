@@ -1,0 +1,58 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: healthvault-backend
+  labels:
+    cloud.googleapis.com/location: europe-west1
+spec:
+  template:
+    metadata:
+      annotations:
+        # Auto-scale settings
+        autoscaling.knative.dev/minScale: '0'
+        autoscaling.knative.dev/maxScale: '10'
+    spec:
+      containers:
+      - image: europe-west1-docker.pkg.dev/helpful-beach-476908-p3/cloud-run-source-deploy/healthvault-backend
+        ports:
+        - name: http1
+          containerPort: 8080
+
+        # Environment variables
+        env:
+        - name: NODE_ENV
+          value: production
+
+        - name: GOOGLE_CLOUD_PROJECT
+          value: helpful-beach-476908-p3
+
+        - name: STORAGE_BUCKET
+          value: helpful-beach-476908-p3.firebasestorage.app
+
+        - name: FRONTEND_URL
+          value: https://helpful-beach-476908-p3.web.app
+
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: gemini-api-key
+              key: "1"
+
+        # Resource limits
+        resources:
+          limits:
+            cpu: '1000m'
+            memory: 512Mi
+
+        # Startup probe
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+
+  traffic:
+  - percent: 100
+    latestRevision: true

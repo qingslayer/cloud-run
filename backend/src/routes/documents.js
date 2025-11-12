@@ -14,8 +14,12 @@ import Fuse from 'fuse.js';
 
 
 const router = express.Router();
-const storage = new Storage();
-const firestore = new Firestore();
+
+// Initialize Google Cloud clients with explicit projectId to use Application Default Credentials
+// This prevents them from trying to load GOOGLE_APPLICATION_CREDENTIALS file path
+const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'helpful-beach-476908-p3';
+const storage = new Storage({ projectId });
+const firestore = new Firestore({ projectId });
 
 // Configure multer for file uploads (store in memory)
 const upload = multer({

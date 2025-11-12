@@ -5,7 +5,11 @@ import { getAIChatResponse } from '../services/gemini/chatService.js';
 import sessionCache from '../services/sessionCache.js';
 
 const router = express.Router();
-const firestore = new Firestore();
+
+// Initialize Firestore with explicit projectId to use Application Default Credentials
+// This prevents it from trying to load GOOGLE_APPLICATION_CREDENTIALS file path
+const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'helpful-beach-476908-p3';
+const firestore = new Firestore({ projectId });
 
 /**
  * POST /api/chat

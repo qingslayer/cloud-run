@@ -1,0 +1,21 @@
+.gcloudignore
+.git
+.gitignore
+node_modules
+npm-debug.log
+.env
+.env.*
+*.log
+.DS_Store
+
+# Development and testing files
+tests/
+scripts/
+migrations/
+*.test.js
+*.md
+
+# Documentation
+README.md
+CLAUDE.md
+GEMINI.md

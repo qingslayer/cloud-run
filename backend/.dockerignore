@@ -1,0 +1,47 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# Testing
+tests/
+scripts/
+migrations/
+*.test.js
+coverage/
+
+# Documentation
+README.md
+CLAUDE.md
+GEMINI.md
+DEPLOYMENT.md
+*.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Cloud deployment files
+.gcloudignore
+service.yaml
+Dockerfile
+
+# Logs
+*.log
+logs/

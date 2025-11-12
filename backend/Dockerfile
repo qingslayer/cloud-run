@@ -1,5 +1,6 @@
-# Use Node.js 18 Alpine for smaller image size
-FROM node:18-alpine
+# Use Node.js 20 Alpine for smaller image size
+# Node 20+ is required by Firebase SDK packages
+FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app

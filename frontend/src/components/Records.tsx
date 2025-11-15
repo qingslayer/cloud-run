@@ -36,6 +36,42 @@ const Records: React.FC<RecordsProps> = ({
 }) => {
     const [filterType, setFilterType] = useState(initialFilter);
     const [sortBy, setSortBy] = useState('date_desc');
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+    const handleDragEnter = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.types.includes('Files')) {
+            setIsDraggingOver(true);
+        }
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
+        if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+            setIsDraggingOver(false);
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+
+        const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
+        if (uploadButton) {
+            uploadButton.click();
+        }
+    };
 
     useEffect(() => {
         setFilterType(initialFilter);
@@ -142,7 +178,24 @@ const Records: React.FC<RecordsProps> = ({
 
     return (
         <>
-        <div className="h-full pt-28 pb-20">
+        <div
+            className="relative h-full pt-28 pb-20"
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+        >
+            {/* Drag Overlay */}
+            {isDraggingOver && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-teal-500/20 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 shadow-2xl text-center border-4 border-dashed border-teal-500">
+                        <UploadIcon className="w-24 h-24 mx-auto mb-6 text-teal-600 dark:text-teal-400 animate-bounce" />
+                        <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">Drop files to upload</h2>
+                        <p className="text-slate-600 dark:text-slate-400">Release to open upload dialog</p>
+                    </div>
+                </div>
+            )}
+
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Filter and Sort Controls */}
                 <div className="mb-6 flex items-start justify-between gap-4">

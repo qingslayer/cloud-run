@@ -14,6 +14,7 @@ import RightPanel from './components/RightPanel';
 import Settings from './components/Settings';
 import TopCommandBar from './components/TopCommandBar';
 import SearchResultsPage from './components/SearchResultsPage';
+import Breadcrumbs from './components/Breadcrumbs';
 import { sendChatMessage } from './services/chatService';
 import { processUniversalSearch } from './services/searchService';
 import { getDocuments, uploadDocument, updateDocument as apiUpdateDocument, deleteDocument as apiDeleteDocument, getDocument } from './services/documentProcessor';
@@ -93,6 +94,48 @@ const App: React.FC = () => {
         return () => mediaQuery.removeEventListener('change', applyTheme);
     }
   }, [theme]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC key - Close modals, panels, and detail views
+      if (e.key === 'Escape') {
+        if (isRightPanelOpen) {
+          setIsRightPanelOpen(false);
+        } else if (selectedDocumentId) {
+          handleCloseDocumentDetail();
+        }
+        return;
+      }
+
+      // Cmd/Ctrl + K - Focus search bar
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[type="text"][placeholder*="Search"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+        return;
+      }
+
+      // Cmd/Ctrl + U - Open upload (if not already focused in an input)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'u') {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
+          if (uploadButton) {
+            uploadButton.click();
+          }
+        }
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isRightPanelOpen, selectedDocumentId]);
 
   const handleNavigateToRecords = (category: DocumentCategory) => {
     setRecordsFilter(category);
@@ -251,6 +294,45 @@ const App: React.FC = () => {
     setSelectedDocumentData(null);
   };
 
+  // Get current document navigation context
+  const getNavigationContext = () => {
+    // Get currently visible documents based on view and filter
+    let visibleDocs = documents.filter(doc => doc.status === 'complete');
+
+    if (view === 'records' && recordsFilter !== 'all') {
+      visibleDocs = visibleDocs.filter(doc => doc.category === recordsFilter);
+    }
+
+    // Sort by date desc (same as Records view default)
+    visibleDocs.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+
+    const currentIndex = selectedDocumentId ? visibleDocs.findIndex(doc => doc.id === selectedDocumentId) : -1;
+
+    return {
+      allDocuments: visibleDocs,
+      currentIndex,
+      hasPrev: currentIndex > 0,
+      hasNext: currentIndex < visibleDocs.length - 1
+    };
+  };
+
+  const handleNavigateDocument = (direction: 'prev' | 'next') => {
+    const { allDocuments, currentIndex } = getNavigationContext();
+
+    if (currentIndex === -1) return;
+
+    let newIndex = currentIndex;
+    if (direction === 'prev' && currentIndex > 0) {
+      newIndex = currentIndex - 1;
+    } else if (direction === 'next' && currentIndex < allDocuments.length - 1) {
+      newIndex = currentIndex + 1;
+    }
+
+    if (newIndex !== currentIndex && allDocuments[newIndex]) {
+      handleSelectDocument(allDocuments[newIndex].id);
+    }
+  };
+
   const handleSendMessage = useCallback(async (message: string) => {
     if (!message.trim()) return;
 
@@ -359,6 +441,45 @@ const App: React.FC = () => {
 
   const selectedDocument = selectedDocumentId ? selectedDocumentData : null;
 
+  // Generate breadcrumbs based on current view
+  const getBreadcrumbs = () => {
+    const crumbs: Array<{ label: string; onClick?: () => void }> = [];
+
+    // Always start with Home (unless we're on Dashboard and no document is selected)
+    if (view !== 'dashboard' || selectedDocumentId) {
+      crumbs.push({
+        label: 'Home',
+        onClick: () => {
+          setView('dashboard');
+          setRecordsFilter('all');
+        }
+      });
+    }
+
+    // Add view-specific crumbs
+    if (view === 'records') {
+      crumbs.push({
+        label: recordsFilter === 'all' ? 'All Records' : recordsFilter,
+        onClick: selectedDocumentId ? () => { /* Stay on records but close detail */ } : undefined
+      });
+    } else if (view === 'search') {
+      crumbs.push({
+        label: `Search: "${searchQuery.substring(0, 30)}${searchQuery.length > 30 ? '...' : ''}"`,
+      });
+    } else if (view === 'settings') {
+      crumbs.push({ label: 'Settings' });
+    }
+
+    // Add document if one is selected
+    if (selectedDocumentId && selectedDocumentData) {
+      crumbs.push({
+        label: selectedDocumentData.displayName || 'Document'
+      });
+    }
+
+    return crumbs;
+  };
+
   if (isAuthLoading) {
     return <LoadingState message="Loading..." fullScreen />;
   }
@@ -417,7 +538,17 @@ const App: React.FC = () => {
             />
           }
         />
-        <main className="flex-1 overflow-y-auto">
+
+        {/* Breadcrumb Navigation */}
+        {getBreadcrumbs().length > 0 && !selectedDocumentId && (
+          <div className="flex-shrink-0 px-4 sm:px-6 lg:px-8 py-3 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-b border-stone-200/50 dark:border-slate-800/50">
+            <div className="max-w-7xl mx-auto">
+              <Breadcrumbs items={getBreadcrumbs()} />
+            </div>
+          </div>
+        )}
+
+        <main className={`flex-1 overflow-y-auto transition-all duration-300 ${isRightPanelOpen ? 'pr-[25rem]' : ''}`}>
           {renderMainContent()}
         </main>
 
@@ -431,11 +562,13 @@ const App: React.FC = () => {
         />
 
         {selectedDocument && (
-            <DocumentDetailView 
-                document={selectedDocument} 
-                onClose={handleCloseDocumentDetail} 
-                onUpdate={handleUpdateDocument} 
-                onDelete={handleRequestDeleteDocument} 
+            <DocumentDetailView
+                document={selectedDocument}
+                onClose={handleCloseDocumentDetail}
+                onUpdate={handleUpdateDocument}
+                onDelete={handleRequestDeleteDocument}
+                navigationContext={getNavigationContext()}
+                onNavigate={handleNavigateDocument}
             />
         )}
 

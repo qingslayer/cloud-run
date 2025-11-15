@@ -15,19 +15,28 @@ import { categoryInfoMap } from '../utils/category-info';
 import { ClipboardNotesIcon } from './icons/ClipboardNotesIcon';
 import { getDocumentDate } from '../utils/health-helpers';
 
+interface NavigationContext {
+  allDocuments: DocumentFile[];
+  currentIndex: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+}
+
 interface DocumentDetailViewProps {
   document: DocumentFile;
   onClose: () => void;
   onUpdate?: (id: string, updates: Partial<DocumentFile>) => Promise<void>;
   onDelete?: (id: string) => void;
+  navigationContext?: NavigationContext;
+  onNavigate?: (direction: 'prev' | 'next') => void;
 }
 
 const categories: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
 
-const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClose, onUpdate, onDelete }) => {
+const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClose, onUpdate, onDelete, navigationContext, onNavigate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  
+
   // State for all editable fields
   const [editedDisplayName, setEditedDisplayName] = useState(document.displayName || '');
   const [editedCategory, setEditedCategory] = useState(document.category);
@@ -36,6 +45,28 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
 
   const [isSaving, setIsSaving] = useState(false);
   const { color, lightColor } = categoryInfoMap[document.category];
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't navigate if user is typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' && navigationContext?.hasPrev && onNavigate) {
+        e.preventDefault();
+        onNavigate('prev');
+      } else if (e.key === 'ArrowRight' && navigationContext?.hasNext && onNavigate) {
+        e.preventDefault();
+        onNavigate('next');
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [navigationContext, onNavigate]);
 
   // When the document prop changes (e.g., after a save), reset the state
   useEffect(() => {
@@ -88,10 +119,43 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
     <div className="absolute inset-0 bg-stone-50 dark:bg-[#0B1120] z-50 flex flex-col p-4 overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 flex items-center justify-between p-2 mb-4">
-        <button onClick={onClose} className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors">
-            <ArrowLeftIcon className="w-5 h-5" />
-            <span className="text-sm font-semibold">Back to Timeline</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={onClose} className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors">
+              <ArrowLeftIcon className="w-5 h-5" />
+              <span className="text-sm font-semibold">Back to Timeline</span>
+          </button>
+
+          {/* Document Navigation */}
+          {navigationContext && (
+            <div className="flex items-center gap-2 ml-4 border-l border-slate-300 dark:border-slate-700 pl-4">
+              <button
+                onClick={() => onNavigate?.('prev')}
+                disabled={!navigationContext.hasPrev}
+                className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Previous document (←)"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+              </button>
+
+              <span className="text-sm text-slate-500 dark:text-slate-400 min-w-[4rem] text-center">
+                {navigationContext.currentIndex + 1} of {navigationContext.allDocuments.length}
+              </span>
+
+              <button
+                onClick={() => onNavigate?.('next')}
+                disabled={!navigationContext.hasNext}
+                className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Next document (→)"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Edit Mode Toggle */}
         {!isEditing && onUpdate && (

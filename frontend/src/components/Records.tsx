@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { DocumentFile, DocumentCategory } from '../types';
+import { DocumentFile, DocumentCategory, getDocumentProcessingStatus } from '../types';
 import DocumentCard from './DocumentCard';
 import { SearchIcon } from './icons/SearchIcon';
 import { TrashIcon } from './icons/TrashIcon';
@@ -43,12 +43,7 @@ const Records: React.FC<RecordsProps> = ({
 
     const sortedAndFilteredDocuments = useMemo(() => {
         const filtered = documents.filter(doc => {
-            // Only show documents that have completed AI analysis
-            if (doc.status !== 'complete') {
-                return false;
-            }
-
-            // Category filter
+            // Category filter - apply to all documents
             if (filterType !== 'all') {
                 return doc.category === filterType;
             }
@@ -57,13 +52,26 @@ const Records: React.FC<RecordsProps> = ({
         });
 
         return filtered.sort((a, b) => {
+            // Sort processing/pending review documents to the top
+            const statusA = getDocumentProcessingStatus(a);
+            const statusB = getDocumentProcessingStatus(b);
+
+            // Processing documents first
+            if (statusA === 'processing' && statusB !== 'processing') return -1;
+            if (statusA !== 'processing' && statusB === 'processing') return 1;
+
+            // Then pending review
+            if (statusA === 'pending_review' && statusB === 'reviewed') return -1;
+            if (statusA === 'reviewed' && statusB === 'pending_review') return 1;
+
+            // Within same status, apply user's sort preference
             switch (sortBy) {
                 case 'date_asc':
                     return new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime();
                 case 'name_asc':
-                    return (a.displayName || '').localeCompare(b.displayName || '');
+                    return (a.displayName || a.filename || '').localeCompare(b.displayName || b.filename || '');
                 case 'name_desc':
-                    return (b.displayName || '').localeCompare(a.displayName || '');
+                    return (b.displayName || b.filename || '').localeCompare(a.displayName || a.filename || '');
                 case 'date_desc':
                 default:
                     return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
@@ -73,12 +81,11 @@ const Records: React.FC<RecordsProps> = ({
 
     const groupedDocuments = useMemo<{ [key: string]: DocumentFile[] }>(() => groupDocumentsByMonth(sortedAndFilteredDocuments), [sortedAndFilteredDocuments]);
 
-    // Calculate category counts for filter pills (only completed documents)
+    // Calculate category counts for filter pills
     const categoryCounts = useMemo(() => {
-        const completedDocs = documents.filter(doc => doc.status === 'complete');
-        const counts: { [key: string]: number } = { all: completedDocs.length };
+        const counts: { [key: string]: number } = { all: documents.length };
         categories.forEach(cat => {
-            counts[cat] = completedDocs.filter(doc => doc.category === cat).length;
+            counts[cat] = documents.filter(doc => doc.category === cat).length;
         });
         return counts;
     }, [documents]);
@@ -256,7 +263,37 @@ const Records: React.FC<RecordsProps> = ({
                         )}
                     </div>
                 </div>
-                
+
+                {/* Review Queue Banner */}
+                {(() => {
+                    const pendingReview = sortedAndFilteredDocuments.filter(
+                        doc => getDocumentProcessingStatus(doc) === 'pending_review'
+                    );
+                    if (pendingReview.length === 0) return null;
+
+                    return (
+                        <div className="mb-6 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/30 border border-teal-400/60 dark:border-teal-600/60 rounded-xl shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-teal-500 dark:bg-teal-600 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                                            {pendingReview.length} Document{pendingReview.length !== 1 ? 's' : ''} Pending Review
+                                        </h3>
+                                        <p className="text-sm text-teal-700 dark:text-teal-300">
+                                            Click on documents below to review AI-generated information
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+
                 {/* Records List */}
                 <div className="space-y-6">
                     {documents.length > 0 ? (

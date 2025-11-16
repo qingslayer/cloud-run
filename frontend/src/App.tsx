@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from './config/firebase';
-import { DocumentFile, ChatMessage as ChatMessageType, DocumentCategory, Theme, View, UniversalSearchResult } from './types';
+import { DocumentFile, ChatMessage as ChatMessageType, DocumentCategory, Theme, View, UniversalSearchResult, getDocumentProcessingStatus } from './types';
 import Dashboard from './components/Dashboard';
 import Records from './components/Records';
 import Login from './components/Login';
@@ -14,6 +14,7 @@ import RightPanel from './components/RightPanel';
 import Settings from './components/Settings';
 import TopCommandBar from './components/TopCommandBar';
 import SearchResultsPage from './components/SearchResultsPage';
+import ReviewModal from './components/ReviewModal';
 import { sendChatMessage } from './services/chatService';
 import { processUniversalSearch } from './services/searchService';
 import { getDocuments, uploadDocument, updateDocument as apiUpdateDocument, deleteDocument as apiDeleteDocument, getDocument } from './services/documentProcessor';
@@ -54,6 +55,9 @@ const App: React.FC = () => {
     isDeleting: boolean;
   }>({ isOpen: false, type: 'single', isDeleting: false });
 
+  // State for review modal
+  const [reviewModalDocument, setReviewModalDocument] = useState<DocumentFile | null>(null);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -74,6 +78,47 @@ const App: React.FC = () => {
 
     return () => unsubscribe();
   }, []);
+
+  // Poll for updates on documents that are still processing
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Find documents without aiAnalysis (still processing)
+    const processingDocs = documents.filter(doc => !doc.aiAnalysis);
+
+    if (processingDocs.length === 0) return;
+
+    console.log(`Polling for ${processingDocs.length} processing document(s)...`);
+
+    // Poll every 3 seconds for processing documents
+    const interval = setInterval(async () => {
+      try {
+        const { documents: freshDocs } = await getDocuments();
+
+        // Update documents in state, preserving order
+        setDocuments(prevDocs => {
+          const updatedDocs = prevDocs.map(doc => {
+            const fresh = freshDocs.find(f => f.id === doc.id);
+            return fresh || doc;
+          });
+
+          // Check if any document just completed processing
+          prevDocs.forEach(oldDoc => {
+            const newDoc = updatedDocs.find(d => d.id === oldDoc.id);
+            if (oldDoc && !oldDoc.aiAnalysis && newDoc?.aiAnalysis) {
+              console.log(`✅ AI analysis completed for: ${newDoc.displayName || newDoc.filename}`);
+            }
+          });
+
+          return updatedDocs;
+        });
+      } catch (err) {
+        console.error('Error polling for document updates:', err);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [currentUser, documents]);
 
 
   useEffect(() => {
@@ -135,7 +180,7 @@ const App: React.FC = () => {
       const { id: _, ...safeUpdates } = updates as any;
 
       const updatedDoc = await apiUpdateDocument(id, safeUpdates);
-      
+
       setDocuments(prevDocs =>
         prevDocs.map(doc => (doc.id === id ? updatedDoc : doc))
       );
@@ -151,6 +196,29 @@ const App: React.FC = () => {
       error("Failed to update document. Please try again.");
     }
   }, [selectedDocumentId, success, error]);
+
+  const handleApproveReview = useCallback(async (updates: Partial<DocumentFile>) => {
+    if (!reviewModalDocument) return;
+
+    try {
+      const { id: _, ...safeUpdates } = updates as any;
+
+      const updatedDoc = await apiUpdateDocument(reviewModalDocument.id, safeUpdates);
+
+      setDocuments(prevDocs =>
+        prevDocs.map(doc => (doc.id === reviewModalDocument.id ? updatedDoc : doc))
+      );
+
+      setReviewModalDocument(null); // Close review modal
+
+      success("Document reviewed and saved successfully!");
+
+    } catch (err) {
+      console.error("Error approving document:", err);
+      error("Failed to save reviewed document. Please try again.");
+      throw err; // Re-throw so ReviewModal can handle it
+    }
+  }, [reviewModalDocument, success, error]);
 
   const handleRequestDeleteDocument = useCallback((id: string) => {
     setDeleteConfirmation({
@@ -219,18 +287,27 @@ const App: React.FC = () => {
     try {
       const fullDoc = await getDocument(id);
 
-      selectedDocumentDataRef.current = fullDoc;
-      setSelectedDocumentData(fullDoc);
+      // Check if document needs review
+      const status = getDocumentProcessingStatus(fullDoc);
 
-      selectedDocumentIdRef.current = id;
-      setSelectedDocumentId(id);
+      if (status === 'pending_review') {
+        // Open review modal instead of detail view
+        setReviewModalDocument(fullDoc);
+      } else {
+        // Open normal detail view for reviewed documents
+        selectedDocumentDataRef.current = fullDoc;
+        setSelectedDocumentData(fullDoc);
 
-      setViewedDocuments(prev => {
-        const newSet = new Set(prev);
-        newSet.add(id);
-        localStorage.setItem('viewedDocuments', JSON.stringify(Array.from(newSet)));
-        return newSet;
-      });
+        selectedDocumentIdRef.current = id;
+        setSelectedDocumentId(id);
+
+        setViewedDocuments(prev => {
+          const newSet = new Set(prev);
+          newSet.add(id);
+          localStorage.setItem('viewedDocuments', JSON.stringify(Array.from(newSet)));
+          return newSet;
+        });
+      }
 
     } catch (err) {
       console.error("Error fetching document details:", err);
@@ -431,12 +508,20 @@ const App: React.FC = () => {
         />
 
         {selectedDocument && (
-            <DocumentDetailView 
-                document={selectedDocument} 
-                onClose={handleCloseDocumentDetail} 
-                onUpdate={handleUpdateDocument} 
-                onDelete={handleRequestDeleteDocument} 
+            <DocumentDetailView
+                document={selectedDocument}
+                onClose={handleCloseDocumentDetail}
+                onUpdate={handleUpdateDocument}
+                onDelete={handleRequestDeleteDocument}
             />
+        )}
+
+        {reviewModalDocument && (
+          <ReviewModal
+            document={reviewModalDocument}
+            onApprove={handleApproveReview}
+            onClose={() => setReviewModalDocument(null)}
+          />
         )}
 
        <ConfirmationModal

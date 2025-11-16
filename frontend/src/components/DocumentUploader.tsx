@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { DocumentFile } from '../types';
+import { DocumentFile, getDocumentProcessingStatus } from '../types';
 import { UploadIcon } from './icons/UploadIcon';
 import { uploadDocument } from '../services/documentProcessor';
 
@@ -40,11 +40,37 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Compute documents needing attention (processing or pending review)
+  const documentsNeedingAttention = uploadedDocuments.filter(doc => {
+    const status = getDocumentProcessingStatus(doc);
+    return status === 'processing' || status === 'pending_review';
+  });
+
+  // Merge local upload progress with documents needing attention
+  const combinedProgress: UploadProgress[] = [
+    ...uploadProgress, // Active uploads
+    ...documentsNeedingAttention.map(doc => {
+      const status = getDocumentProcessingStatus(doc);
+      return {
+        filename: doc.displayName || doc.filename,
+        documentId: doc.id,
+        status: status === 'processing' ? 'processing' as const : 'complete' as const,
+      };
+    }).filter(item => {
+      // Don't duplicate items already in uploadProgress
+      return !uploadProgress.some(p => p.documentId === item.documentId);
+    })
+  ];
+
   useEffect(() => {
     uploadProgress.forEach((progress) => {
       if (progress.documentId && progress.status === 'processing') {
         const doc = uploadedDocuments.find(d => d.id === progress.documentId);
-        if (doc && doc.status === 'complete') {
+
+        // FIX: Check if AI analysis has completed (not just status)
+        if (doc?.aiAnalysis) {
+          console.log(`✅ Document ready for review: ${doc.displayName || doc.filename}`);
+
           setUploadProgress(prev => prev.map(p =>
             p.documentId === progress.documentId
               ? { ...p, status: 'complete' }
@@ -178,7 +204,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
       case 'processing':
         return 'AI analyzing...';
       case 'complete':
-        return 'Ready to view!';
+        return 'Ready to review!';
       case 'error':
         return 'Failed';
     }
@@ -193,7 +219,23 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
   const handleDismiss = (progressToRemove: UploadProgress, e: React.MouseEvent) => {
     e.stopPropagation();
-    setUploadProgress(prev => prev.filter(p => p !== progressToRemove));
+
+    // If it's a local upload progress item, remove it
+    if (uploadProgress.some(p => p === progressToRemove || p.documentId === progressToRemove.documentId)) {
+      setUploadProgress(prev => prev.filter(p => p.documentId !== progressToRemove.documentId));
+    }
+
+    // If it's a document, mark it as reviewed (dismiss from pending review)
+    if (progressToRemove.documentId) {
+      const doc = uploadedDocuments.find(d => d.id === progressToRemove.documentId);
+      if (doc && !doc.reviewedAt) {
+        // User dismissed without reviewing - we could either:
+        // 1. Do nothing (keeps showing until reviewed)
+        // 2. Mark as reviewed automatically
+        // For now, let's keep it showing (option 1)
+        console.log('Document dismissed but not reviewed:', doc.displayName);
+      }
+    }
   };
 
   return (
@@ -221,7 +263,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
           accept="image/png, image/jpeg, application/pdf"
           disabled={isUploading}
         />
-        {isUploading && uploadProgress.length === 0 ? (
+        {isUploading && combinedProgress.length === 0 ? (
           <>
             <div className="animate-spin rounded-full h-10 w-10 border-4 border-sky-500 border-t-transparent mx-auto" />
             <span className="mt-2 block text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -241,9 +283,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
         )}
       </div>
 
-      {uploadProgress.length > 0 && (
+      {combinedProgress.length > 0 && (
         <div className="space-y-2">
-          {uploadProgress.map((progress, idx) => (
+          <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
+            {documentsNeedingAttention.length > 0 && `${documentsNeedingAttention.length} document(s) pending review`}
+          </div>
+          {combinedProgress.map((progress, idx) => (
             <div
               key={idx}
               onClick={() => handleDocumentClick(progress)}

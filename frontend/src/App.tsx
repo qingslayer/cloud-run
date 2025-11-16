@@ -440,45 +440,6 @@ const App: React.FC = () => {
 
   const selectedDocument = selectedDocumentId ? selectedDocumentData : null;
 
-  // Generate breadcrumbs based on current view
-  const getBreadcrumbs = () => {
-    const crumbs: Array<{ label: string; onClick?: () => void }> = [];
-
-    // Always start with Home (unless we're on Dashboard and no document is selected)
-    if (view !== 'dashboard' || selectedDocumentId) {
-      crumbs.push({
-        label: 'Home',
-        onClick: () => {
-          setView('dashboard');
-          setRecordsFilter('all');
-        }
-      });
-    }
-
-    // Add view-specific crumbs
-    if (view === 'records') {
-      crumbs.push({
-        label: recordsFilter === 'all' ? 'All Records' : recordsFilter,
-        onClick: selectedDocumentId ? () => { /* Stay on records but close detail */ } : undefined
-      });
-    } else if (view === 'search') {
-      crumbs.push({
-        label: `Search: "${searchQuery.substring(0, 30)}${searchQuery.length > 30 ? '...' : ''}"`,
-      });
-    } else if (view === 'settings') {
-      crumbs.push({ label: 'Settings' });
-    }
-
-    // Add document if one is selected
-    if (selectedDocumentId && selectedDocumentData) {
-      crumbs.push({
-        label: selectedDocumentData.displayName || 'Document'
-      });
-    }
-
-    return crumbs;
-  };
-
   if (isAuthLoading) {
     return <LoadingState message="Loading..." fullScreen />;
   }
@@ -536,7 +497,6 @@ const App: React.FC = () => {
               onSelectDocument={handleSelectDocument}
             />
           }
-          breadcrumbs={getBreadcrumbs()}
           onBack={selectedDocumentId ? handleCloseDocumentDetail : undefined}
           navigationContext={selectedDocumentId ? {
             currentIndex: getNavigationContext().currentIndex,

@@ -4,14 +4,9 @@ import { UserCircleIcon } from './icons/UserCircleIcon';
 import UserMenu from './UserMenu';
 import { View, Theme } from '../types';
 import { HomeIcon } from './icons/HomeIcon';
-import { CollectionIcon } from './icons/CollectionIcon';
+import { FolderIcon } from './icons/FolderIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
-
-export interface BreadcrumbItem {
-  label: string;
-  onClick?: () => void;
-}
 
 export interface NavigationContext {
   currentIndex: number;
@@ -30,7 +25,6 @@ interface TopCommandBarProps {
   setTheme: (theme: Theme) => void;
   currentUser: User | null;
   uploadButton?: React.ReactNode;
-  breadcrumbs?: BreadcrumbItem[];
   onBack?: () => void;
   navigationContext?: NavigationContext;
   onNavigate?: (direction: 'prev' | 'next') => void;
@@ -68,7 +62,6 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
   setTheme,
   currentUser,
   uploadButton,
-  breadcrumbs = [],
   onBack,
   navigationContext,
   onNavigate
@@ -76,7 +69,6 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [query, setQuery] = useState('');
     const menuRef = useRef<HTMLDivElement>(null);
-    const showBreadcrumbs = breadcrumbs.length > 0;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -101,106 +93,67 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
   return (
     <header className="fixed top-4 left-1/2 -translate-x-1/2 z-40 w-full max-w-4xl px-4">
       <div className="w-full flex items-center h-16 px-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl rounded-full border border-stone-200/80 dark:border-slate-800 shadow-lg">
-        
-        {/* Left: Navigation */}
+
+        {/* Left: Dynamic Navigation Icons */}
         <div className="flex items-center space-x-2">
-            <NavItem 
+            {/* Always show Home */}
+            <NavItem
                 icon={<HomeIcon className="w-6 h-6" />}
                 label="Dashboard"
-                isActive={activeView === 'dashboard'}
+                isActive={activeView === 'dashboard' && !onBack}
                 onClick={() => setView('dashboard')}
             />
-            <NavItem 
-                icon={<CollectionIcon className="w-6 h-6" />}
-                label="My Records"
-                isActive={activeView === 'records'}
-                onClick={() => setView('records')}
-            />
-        </div>
 
-        {/* Center: Breadcrumbs & Navigation or Search */}
-        <div className="flex-grow flex items-center justify-center px-4 h-full min-w-0">
-          {showBreadcrumbs ? (
-            <div className="flex items-center gap-2 min-w-0">
-              {/* Back button */}
-              {onBack && (
-                <button
+            {/* If viewing a document, show back + prev/next */}
+            {onBack ? (
+              <>
+                <NavItem
+                  icon={<ArrowLeftIcon className="w-5 h-5" />}
+                  label="Back"
+                  isActive={false}
                   onClick={onBack}
-                  className="flex-shrink-0 p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors"
-                  title="Back"
-                >
-                  <ArrowLeftIcon className="w-5 h-5" />
-                </button>
-              )}
-
-              {/* Breadcrumb path */}
-              <nav className="flex items-center gap-1.5 min-w-0 text-sm">
-                {breadcrumbs.map((item, index) => (
-                  <React.Fragment key={index}>
-                    {index > 0 && (
-                      <svg className="w-4 h-4 flex-shrink-0 text-slate-400 dark:text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                />
+                {navigationContext && onNavigate && (
+                  <>
+                    {/* Previous document */}
+                    <button
+                      onClick={() => onNavigate('prev')}
+                      disabled={!navigationContext.hasPrev}
+                      className="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300 text-slate-500 dark:text-slate-400 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed"
+                      title={`Previous document (${navigationContext.currentIndex + 1}/${navigationContext.total})`}
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                      </svg>
+                    </button>
+                    {/* Next document */}
+                    <button
+                      onClick={() => onNavigate('next')}
+                      disabled={!navigationContext.hasNext}
+                      className="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300 text-slate-500 dark:text-slate-400 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed"
+                      title={`Next document (${navigationContext.currentIndex + 1}/${navigationContext.total})`}
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                       </svg>
-                    )}
-                    {item.onClick ? (
-                      <button
-                        onClick={item.onClick}
-                        className="text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 transition-colors font-medium truncate max-w-[150px]"
-                      >
-                        {item.label}
-                      </button>
-                    ) : (
-                      <span className="text-slate-800 dark:text-slate-200 font-semibold truncate max-w-[200px]">
-                        {item.label}
-                      </span>
-                    )}
-                  </React.Fragment>
-                ))}
-              </nav>
+                    </button>
+                  </>
+                )}
+              </>
+            ) : (
+              /* Otherwise show All Records */
+              <NavItem
+                  icon={<FolderIcon className="w-6 h-6" />}
+                  label="All Records"
+                  isActive={activeView === 'records'}
+                  onClick={() => setView('records')}
+              />
+            )}
+        </div>
 
-              {/* Document navigation (prev/next) */}
-              {navigationContext && onNavigate && (
-                <div className="flex items-center gap-1 ml-3 pl-3 border-l border-slate-300 dark:border-slate-700">
-                  <button
-                    onClick={() => onNavigate('prev')}
-                    disabled={!navigationContext.hasPrev}
-                    className="flex-shrink-0 p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Previous document (←)"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                    </svg>
-                  </button>
-
-                  <span className="text-xs text-slate-500 dark:text-slate-400 px-1.5 whitespace-nowrap">
-                    {navigationContext.currentIndex + 1}/{navigationContext.total}
-                  </span>
-
-                  <button
-                    onClick={() => onNavigate('next')}
-                    disabled={!navigationContext.hasNext}
-                    className="flex-shrink-0 p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    title="Next document (→)"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-
-              {/* AI Assistant button */}
-              <button
-                type="button"
-                onClick={toggleRightPanel}
-                title="AI Assistant"
-                className="flex-shrink-0 ml-2 flex items-center justify-center w-9 h-9 rounded-full text-slate-400 dark:text-slate-500 hover:text-teal-500 dark:hover:text-teal-400 transition-colors"
-              >
-                <SparklesIcon className="w-5 h-5" />
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="flex items-center w-full max-w-md">
+        {/* Center: Search Bar (Always visible) */}
+        <form onSubmit={handleSubmit} className="flex-grow flex items-center justify-center px-4 h-full">
+            <div className="flex items-center w-full max-w-md">
               <button
                 type="button"
                 onClick={toggleRightPanel}
@@ -216,9 +169,8 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
                 placeholder="Search records or ask a question..."
                 className="flex-grow pl-2 pr-4 py-3 bg-transparent text-left text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
               />
-            </form>
-          )}
-        </div>
+            </div>
+        </form>
 
         {/* Right: Actions & User Menu */}
         <div className="flex items-center space-x-3">

@@ -213,6 +213,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   const handleDocumentClick = (progress: UploadProgress) => {
     if (progress.status === 'complete' && progress.documentId && onSelectDocument) {
       onSelectDocument(progress.documentId);
+      // Remove from upload progress immediately when clicked
       setUploadProgress(prev => prev.filter(p => p.documentId !== progress.documentId));
     }
   };
@@ -220,22 +221,28 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   const handleDismiss = (progressToRemove: UploadProgress, e: React.MouseEvent) => {
     e.stopPropagation();
 
-    // If it's a local upload progress item, remove it
-    if (uploadProgress.some(p => p === progressToRemove || p.documentId === progressToRemove.documentId)) {
-      setUploadProgress(prev => prev.filter(p => p.documentId !== progressToRemove.documentId));
-    }
+    // Remove from local upload progress
+    setUploadProgress(prev => prev.filter(p => p.documentId !== progressToRemove.documentId));
 
-    // If it's a document, mark it as reviewed (dismiss from pending review)
+    // If it's a pending review document, mark as reviewed to remove from persistent list
     if (progressToRemove.documentId) {
       const doc = uploadedDocuments.find(d => d.id === progressToRemove.documentId);
-      if (doc && !doc.reviewedAt) {
-        // User dismissed without reviewing - we could either:
-        // 1. Do nothing (keeps showing until reviewed)
-        // 2. Mark as reviewed automatically
-        // For now, let's keep it showing (option 1)
-        console.log('Document dismissed but not reviewed:', doc.displayName);
+      if (doc && !doc.reviewedAt && doc.aiAnalysis) {
+        // Mark as reviewed so it doesn't show up again
+        onUpdateDocument(doc.id, { reviewedAt: new Date() });
       }
     }
+  };
+
+  const handleClearAll = () => {
+    // Mark all pending review documents as reviewed
+    documentsNeedingAttention.forEach(doc => {
+      if (doc.aiAnalysis && !doc.reviewedAt) {
+        onUpdateDocument(doc.id, { reviewedAt: new Date() });
+      }
+    });
+    // Clear local upload progress
+    setUploadProgress([]);
   };
 
   return (
@@ -285,10 +292,24 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
       {combinedProgress.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">
-            {documentsNeedingAttention.length > 0 && `${documentsNeedingAttention.length} document(s) pending review`}
+          {/* Header with count and Clear All button */}
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+              {documentsNeedingAttention.length > 0 && `${documentsNeedingAttention.length} document(s) pending review`}
+            </div>
+            {documentsNeedingAttention.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+              >
+                Clear All
+              </button>
+            )}
           </div>
-          {combinedProgress.map((progress, idx) => (
+
+          {/* Scrollable progress list with max height */}
+          <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent">
+            {combinedProgress.map((progress, idx) => (
             <div
               key={idx}
               onClick={() => handleDocumentClick(progress)}
@@ -326,6 +347,7 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
               )}
             </div>
           ))}
+          </div>
         </div>
       )}
     </div>

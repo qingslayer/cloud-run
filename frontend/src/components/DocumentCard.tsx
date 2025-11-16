@@ -91,43 +91,6 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
     );
   }
 
-  // If pending review, show a prominent review prompt
-  if (isPendingReview) {
-    return (
-      <div
-        onClick={handleCardClick}
-        className={`group relative flex items-center p-4 rounded-2xl shadow-sm transition-all duration-300 border
-            bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/30
-            border-teal-400/60 dark:border-teal-600/60
-            cursor-pointer hover:shadow-lg hover:border-teal-500 dark:hover:border-teal-500 hover:scale-[1.02]`}
-      >
-        <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mr-4 ${lightColor}`}>
-          <CategoryIcon className={`w-6 h-6 ${color}`} />
-        </div>
-
-        <div className="flex-grow min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-base font-bold text-slate-800 dark:text-slate-100 truncate" title={document.displayName}>
-              {document.displayName}
-            </p>
-            <span className="flex-shrink-0 px-2 py-0.5 text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-100 dark:bg-teal-900/50 rounded-full animate-pulse">
-              REVIEW
-            </span>
-          </div>
-          <p className="mt-0.5 text-sm text-teal-700 dark:text-teal-300 font-medium">
-            Click to review AI-generated details
-          </p>
-        </div>
-
-        <div className="flex-shrink-0 ml-4">
-          <div className="w-8 h-8 rounded-full bg-teal-500 dark:bg-teal-600 flex items-center justify-center">
-            <PencilIcon className="w-4 h-4 text-white" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       onClick={handleCardClick}
@@ -143,7 +106,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
       <div className="flex-grow min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-base font-bold text-slate-800 dark:text-slate-100 truncate" title={document.displayName}>{document.displayName}</p>
-          {isNew && (
+          {isPendingReview && (
+            <span className="flex-shrink-0 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/50 rounded-full">
+              REVIEW
+            </span>
+          )}
+          {!isPendingReview && isNew && (
             <span className="flex-shrink-0 px-2 py-0.5 text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-100 dark:bg-teal-900/50 rounded-full">
               NEW
             </span>

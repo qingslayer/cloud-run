@@ -142,6 +142,10 @@ const App: React.FC = () => {
   };
 
   const handleSetView = (newView: View) => {
+    // Close document detail view when switching views
+    if (selectedDocumentId) {
+      handleCloseDocumentDetail();
+    }
     setView(newView);
   };
 
@@ -366,6 +370,9 @@ const App: React.FC = () => {
 
   const handleSearchSubmit = async (query: string) => {
     if (!query.trim()) return;
+
+    // Close any open document detail view
+    handleCloseDocumentDetail();
 
     setChatMessages([]);
     setChatSessionId(null);

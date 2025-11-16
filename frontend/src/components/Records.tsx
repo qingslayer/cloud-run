@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { DocumentFile, DocumentCategory } from '../types';
+import { DocumentFile, DocumentCategory, getDocumentProcessingStatus } from '../types';
 import DocumentCard from './DocumentCard';
 import { SearchIcon } from './icons/SearchIcon';
 import { TrashIcon } from './icons/TrashIcon';
@@ -36,42 +36,45 @@ const Records: React.FC<RecordsProps> = ({
 }) => {
     const [filterType, setFilterType] = useState(initialFilter);
     const [sortBy, setSortBy] = useState('date_desc');
-    const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-    const handleDragEnter = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.dataTransfer.types.includes('Files')) {
-            setIsDraggingOver(true);
-        }
-    };
+// merge conflict
+//     const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX;
-        const y = e.clientY;
-        if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
-            setIsDraggingOver(false);
-        }
-    };
+//     const handleDragEnter = (e: React.DragEvent) => {
+//         e.preventDefault();
+//         e.stopPropagation();
+//         if (e.dataTransfer.types.includes('Files')) {
+//             setIsDraggingOver(true);
+//         }
+//     };
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-    };
+//     const handleDragLeave = (e: React.DragEvent) => {
+//         e.preventDefault();
+//         e.stopPropagation();
+//         const rect = e.currentTarget.getBoundingClientRect();
+//         const x = e.clientX;
+//         const y = e.clientY;
+//         if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+//             setIsDraggingOver(false);
+//         }
+//     };
 
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsDraggingOver(false);
+//     const handleDragOver = (e: React.DragEvent) => {
+//         e.preventDefault();
+//         e.stopPropagation();
+//     };
 
-        const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
-        if (uploadButton) {
-            uploadButton.click();
-        }
-    };
+//     const handleDrop = (e: React.DragEvent) => {
+//         e.preventDefault();
+//         e.stopPropagation();
+//         setIsDraggingOver(false);
+
+//         const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
+//         if (uploadButton) {
+//             uploadButton.click();
+//         }
+//     };
+//     const [showPendingReviewOnly, setShowPendingReviewOnly] = useState(false);
 
     useEffect(() => {
         setFilterType(initialFilter);
@@ -79,9 +82,10 @@ const Records: React.FC<RecordsProps> = ({
 
     const sortedAndFilteredDocuments = useMemo(() => {
         const filtered = documents.filter(doc => {
-            // Only show documents that have completed AI analysis
-            if (doc.status !== 'complete') {
-                return false;
+            // Pending review filter
+            if (showPendingReviewOnly) {
+                const status = getDocumentProcessingStatus(doc);
+                if (status !== 'pending_review') return false;
             }
 
             // Category filter
@@ -92,29 +96,29 @@ const Records: React.FC<RecordsProps> = ({
             return true;
         });
 
+        // Sort by user preference (no priority sorting)
         return filtered.sort((a, b) => {
             switch (sortBy) {
                 case 'date_asc':
                     return new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime();
                 case 'name_asc':
-                    return (a.displayName || '').localeCompare(b.displayName || '');
+                    return (a.displayName || a.filename || '').localeCompare(b.displayName || b.filename || '');
                 case 'name_desc':
-                    return (b.displayName || '').localeCompare(a.displayName || '');
+                    return (b.displayName || b.filename || '').localeCompare(a.displayName || a.filename || '');
                 case 'date_desc':
                 default:
                     return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
             }
         });
-    }, [documents, filterType, sortBy]);
+    }, [documents, filterType, sortBy, showPendingReviewOnly]);
 
     const groupedDocuments = useMemo<{ [key: string]: DocumentFile[] }>(() => groupDocumentsByMonth(sortedAndFilteredDocuments), [sortedAndFilteredDocuments]);
 
-    // Calculate category counts for filter pills (only completed documents)
+    // Calculate category counts for filter pills
     const categoryCounts = useMemo(() => {
-        const completedDocs = documents.filter(doc => doc.status === 'complete');
-        const counts: { [key: string]: number } = { all: completedDocs.length };
+        const counts: { [key: string]: number } = { all: documents.length };
         categories.forEach(cat => {
-            counts[cat] = completedDocs.filter(doc => doc.category === cat).length;
+            counts[cat] = documents.filter(doc => doc.category === cat).length;
         });
         return counts;
     }, [documents]);
@@ -309,7 +313,56 @@ const Records: React.FC<RecordsProps> = ({
                         )}
                     </div>
                 </div>
-                
+
+                {/* Review Queue Banner */}
+                {(() => {
+                    const pendingReview = documents.filter(
+                        doc => getDocumentProcessingStatus(doc) === 'pending_review'
+                    );
+                    if (pendingReview.length === 0) return null;
+
+                    const handleMarkAllComplete = () => {
+                        pendingReview.forEach(doc => {
+                            onUpdateDocument(doc.id, { reviewedAt: new Date() });
+                        });
+                    };
+
+                    return (
+                        <div className={`mb-6 p-4 rounded-xl shadow-sm transition-all ${
+                            showPendingReviewOnly
+                                ? 'bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/50 dark:to-cyan-900/50 border-2 border-teal-500 dark:border-teal-400'
+                                : 'bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/30 border border-teal-400/60 dark:border-teal-600/60'
+                        }`}>
+                            <div className="flex items-center justify-between">
+                                <div
+                                    className="flex items-center gap-3 flex-1 cursor-pointer group"
+                                    onClick={() => setShowPendingReviewOnly(!showPendingReviewOnly)}
+                                >
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-teal-500 dark:bg-teal-600 group-hover:bg-teal-600 dark:group-hover:bg-teal-500 transition-colors flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+                                            {pendingReview.length} Document{pendingReview.length !== 1 ? 's' : ''} Pending Review
+                                        </h3>
+                                        <p className="text-sm text-teal-700 dark:text-teal-300">
+                                            {showPendingReviewOnly ? 'Showing only pending reviews • Click to show all' : 'Click to filter • Review AI-generated information'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleMarkAllComplete}
+                                    className="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-teal-400 dark:border-teal-600 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900/50 transition-colors text-sm font-semibold whitespace-nowrap ml-4"
+                                >
+                                    Mark All as Complete
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })()}
+
                 {/* Records List */}
                 <div className="space-y-6">
                     {documents.length > 0 ? (

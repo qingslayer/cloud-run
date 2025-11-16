@@ -642,7 +642,7 @@ router.patch('/:id', async (req, res) => {
     }
 
     const updateData = {};
-    const editableFields = ['displayName', 'category', 'notes', 'status'];
+    const editableFields = ['displayName', 'category', 'notes', 'status', 'reviewedAt'];
 
     // Handle simple, top-level fields
     for (const field of editableFields) {

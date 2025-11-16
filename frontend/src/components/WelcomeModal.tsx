@@ -1,9 +1,9 @@
 import React from 'react';
-import { SparklesIcon } from './icons/SparklesIcon';
 import { UploadIcon } from './icons/UploadIcon';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { SearchIcon } from './icons/SearchIcon';
-import { EmptyDashboard } from './illustrations/EmptyDashboard';
+import { ShieldCheckIcon } from './icons/ShieldCheckIcon';
+import { SparklesIcon } from './icons/SparklesIcon';
 
 interface WelcomeModalProps {
   onClose: () => void;
@@ -12,105 +12,101 @@ interface WelcomeModalProps {
 
 const WelcomeModal: React.FC<WelcomeModalProps> = ({ onClose, onStartTour }) => {
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-md overflow-y-auto">
-      <div className="min-h-screen flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-4xl">
-          {/* Header with illustration */}
-          <div className="text-center mb-12">
-            <EmptyDashboard className="max-w-sm mx-auto mb-8 opacity-90" />
-            <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">
-              Welcome to HealthVault
-            </h1>
-            <p className="text-xl text-slate-300">
-              Your secure, AI-powered personal health record manager. Upload documents, get instant insights
-            </p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="flex flex-col items-center gap-4">
+        {/* Modal - Narrower width */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+          {/* Visual Header - More turquoise/teal */}
+          <div className="relative bg-gradient-to-br from-teal-600 via-cyan-700 to-cyan-800 px-8 py-12 text-white text-center overflow-hidden">
+            {/* Decorative elements */}
+            <div className="absolute top-4 left-8 w-16 h-16 bg-white/10 rounded-full blur-2xl"></div>
+            <div className="absolute bottom-4 right-8 w-20 h-20 bg-cyan-400/20 rounded-full blur-2xl"></div>
+            <div className="absolute top-1/2 left-1/4 w-2 h-2 bg-white/40 rounded-full"></div>
+            <div className="absolute top-1/3 right-1/4 w-2 h-2 bg-white/40 rounded-full"></div>
 
-          {/* Content Grid */}
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all">
-              <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-teal-500/30">
-                <UploadIcon className="w-7 h-7 text-white" />
+            <div className="relative">
+              {/* Large icon - Original gradient colors */}
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl mb-4 shadow-xl">
+                <SparklesIcon className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">
-                Upload Medical Documents
-              </h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Upload lab results, prescriptions, imaging reports, and more. AI automatically extracts and organizes the information.
-              </p>
-            </div>
 
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all">
-              <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30">
-                <CheckCircleIcon className="w-7 h-7 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">
-                Review & Edit
-              </h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Verify AI-extracted data, make corrections, and add personal notes. Your health records, your control.
-              </p>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all">
-              <div className="w-14 h-14 bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-sky-500/30">
-                <SearchIcon className="w-7 h-7 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-2">
-                Search & Chat
-              </h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
-                Ask questions like "What was my cholesterol last year?" AI finds and explains your health data instantly.
+              <h2 className="text-4xl font-bold mb-3 tracking-tight">
+                Welcome to HealthVault
+              </h2>
+              <p className="text-teal-50 text-lg max-w-md mx-auto">
+                Your AI-powered personal health record manager
               </p>
             </div>
           </div>
 
-          {/* Pro tip */}
-          <div className="bg-gradient-to-r from-teal-500/20 to-cyan-500/20 backdrop-blur-sm border border-teal-400/30 rounded-2xl p-6 mb-8">
-            <div className="flex items-start gap-3">
-              <SparklesIcon className="w-6 h-6 text-teal-300 flex-shrink-0 mt-1" />
-              <div>
-                <p className="text-white font-semibold mb-1">Pro tip:</p>
-                <p className="text-slate-200">
-                  Start by uploading a recent lab result or prescription. The AI will show you what it can do!
-                </p>
+          {/* Content */}
+          <div className="p-8 pb-6">
+            <div className="space-y-6 mb-6">
+              {/* Upload Feature */}
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-teal-500/30">
+                  <UploadIcon className="w-7 h-7 text-white" />
+                </div>
+                <div className="text-left flex-1">
+                  <h4 className="font-semibold text-base text-slate-800 dark:text-slate-200 mb-1">
+                    Upload Medical Documents
+                  </h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Upload lab results, prescriptions, and more. AI automatically extracts and organizes the information.
+                  </p>
+                </div>
+              </div>
+
+              {/* Review Feature - Transition color between teal and sky */}
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/30">
+                  <CheckCircleIcon className="w-7 h-7 text-white" />
+                </div>
+                <div className="text-left flex-1">
+                  <h4 className="font-semibold text-base text-slate-800 dark:text-slate-200 mb-1">
+                    Review & Edit
+                  </h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Verify AI-extracted data, make corrections, and add personal notes.
+                  </p>
+                </div>
+              </div>
+
+              {/* Search Feature */}
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-sky-500 to-sky-600 rounded-xl flex items-center justify-center shadow-lg shadow-sky-500/30">
+                  <SearchIcon className="w-7 h-7 text-white" />
+                </div>
+                <div className="text-left flex-1">
+                  <h4 className="font-semibold text-base text-slate-800 dark:text-slate-200 mb-1">
+                    Search & Chat
+                  </h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Ask questions like "What was my cholesterol last year?" and get instant answers.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Keyboard Shortcuts */}
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 mb-8">
-            <p className="text-white font-semibold mb-4">Keyboard Shortcuts:</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-              <div className="flex items-center gap-2">
-                <kbd className="px-3 py-1.5 bg-white/10 border border-white/20 text-white rounded font-mono text-xs">Cmd+K</kbd>
-                <span className="text-slate-300">Search</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="px-3 py-1.5 bg-white/10 border border-white/20 text-white rounded font-mono text-xs">Cmd+U</kbd>
-                <span className="text-slate-300">Upload</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="px-3 py-1.5 bg-white/10 border border-white/20 text-white rounded font-mono text-xs">ESC</kbd>
-                <span className="text-slate-300">Close panels</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <kbd className="px-3 py-1.5 bg-white/10 border border-white/20 text-white rounded font-mono text-xs">←→</kbd>
-                <span className="text-slate-300">Navigate docs</span>
-              </div>
+            {/* Privacy Note */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-xl">
+              <p className="text-sm text-slate-700 dark:text-slate-300 flex items-center gap-3">
+                <ShieldCheckIcon className="w-6 h-6 text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                <span>
+                  <strong className="font-semibold">Your privacy is protected.</strong> All documents are encrypted and stored securely.
+                </span>
+              </p>
             </div>
-          </div>
-
-          {/* CTA Button */}
-          <div className="text-center">
-            <button
-              onClick={onClose}
-              className="px-10 py-4 rounded-xl text-white bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 transition-all font-semibold text-lg shadow-xl shadow-teal-500/30 hover:shadow-2xl hover:shadow-teal-500/50 hover:scale-105 transform"
-            >
-              Got it
-            </button>
           </div>
         </div>
+
+        {/* Get Started Button - Outside modal with outline style */}
+        <button
+          onClick={onClose}
+          className="px-6 py-2 rounded-xl text-teal-500 dark:text-teal-400 bg-transparent border-2 border-teal-500 dark:border-teal-400 hover:bg-teal-500/10 dark:hover:bg-teal-400/10 transition-all font-semibold shadow-lg shadow-teal-500/30 hover:shadow-xl hover:shadow-teal-500/50"
+        >
+          Get Started
+        </button>
       </div>
     </div>
   );

@@ -726,21 +726,9 @@ const App: React.FC = () => {
          />
        )}
 
-       {/* Onboarding Tooltips */}
-       {currentUser && documents.length === 0 && !showWelcomeModal && shouldShowTooltip('upload-first-document') && (
-         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50">
-           <OnboardingTooltip
-             id="upload-first-document"
-             title="Upload Your First Document"
-             description="Click the upload button above to upload a medical document. Try a lab result or prescription to see AI in action!"
-             position="top"
-             onDismiss={dismissTooltip}
-           />
-         </div>
-       )}
-
+       {/* Onboarding Tooltips - only show after user has documents */}
        {reviewModalDocument && !onboardingState.hasReviewedFirstDocument && shouldShowTooltip('review-document') && (
-         <div className="fixed top-24 right-8 z-[60] max-w-md">
+         <div className="fixed top-24 right-8 z-[60]">
            <OnboardingTooltip
              id="review-document"
              title="Review AI Analysis"

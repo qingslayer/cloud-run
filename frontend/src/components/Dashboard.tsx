@@ -7,6 +7,8 @@ import { UploadIcon } from './icons/UploadIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ShieldCheckIcon } from './icons/ShieldCheckIcon';
 import { ClockIcon } from './icons/ClockIcon';
+import { CheckCircleIcon } from './icons/CheckCircleIcon';
+import { SearchIcon } from './icons/SearchIcon';
 import LoadingSpinner from './LoadingSpinner';
 
 
@@ -188,32 +190,110 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
                     )}
                 </div>
             ) : (
-                <div className="flex flex-col items-center justify-center min-h-[calc(100vh-14rem)] px-4">
+                <div className="flex flex-col items-center justify-center min-h-[calc(100vh-14rem)] px-4 py-8">
                   {/* Main Welcome Content */}
-                  <div className="text-center max-w-2xl">
-                    <EmptyDashboard className="max-w-sm mx-auto mb-8" />
+                  <div className="text-center max-w-5xl w-full">
+                    <EmptyDashboard className="max-w-sm mx-auto mb-10" />
 
-                    <h1 className="text-4xl font-bold text-slate-800 dark:text-white mb-4 tracking-tight">
-                      Welcome to Health Vault
+                    <h1 className="text-4xl md:text-5xl font-bold text-slate-800 dark:text-white mb-4 tracking-tight">
+                      Welcome to HealthVault
                     </h1>
 
-                    <p className="text-xl text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+                    <p className="text-xl text-slate-600 dark:text-slate-400 mb-12 leading-relaxed max-w-2xl mx-auto">
                       Your secure, AI-powered health record manager. Upload documents, get instant insights, and take control of your health data.
                     </p>
 
-                    <p className="text-lg text-slate-600 dark:text-slate-400 flex items-center justify-center gap-2 flex-wrap">
-                      <span>Click the</span>
-                      <span className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl font-semibold shadow-lg shadow-teal-500/30">
-                        <UploadIcon className="w-5 h-5" />
-                        Upload
-                      </span>
-                      <span>button to get started</span>
-                    </p>
+                    {/* Feature Cards */}
+                    <div className="grid md:grid-cols-3 gap-6 mb-12 max-w-4xl mx-auto">
+                      <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 text-left hover:shadow-lg transition-shadow">
+                        <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-teal-500/30">
+                          <UploadIcon className="w-6 h-6 text-white" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+                          Upload Medical Documents
+                        </h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                          Upload lab results, prescriptions, imaging reports, and more. AI automatically extracts and organizes the information.
+                        </p>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 text-left hover:shadow-lg transition-shadow">
+                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/30">
+                          <CheckCircleIcon className="w-6 h-6 text-white" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+                          Review & Edit
+                        </h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                          Verify AI-extracted data, make corrections, and add personal notes. Your health records, your control.
+                        </p>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-6 text-left hover:shadow-lg transition-shadow">
+                        <div className="w-12 h-12 bg-gradient-to-br from-sky-400 to-sky-600 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-sky-500/30">
+                          <SearchIcon className="w-6 h-6 text-white" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+                          Search & Chat
+                        </h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                          Ask questions like "What was my cholesterol last year?" AI finds and explains your health data instantly.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Pro Tip */}
+                    <div className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-200 dark:border-teal-800 rounded-2xl p-6 mb-10 max-w-3xl mx-auto">
+                      <div className="flex items-start gap-3 text-left">
+                        <SparklesIcon className="w-6 h-6 text-teal-600 dark:text-teal-400 flex-shrink-0 mt-1" />
+                        <div>
+                          <p className="text-slate-800 dark:text-white font-semibold mb-1">Pro tip:</p>
+                          <p className="text-slate-700 dark:text-slate-300">
+                            Start by uploading a recent lab result or prescription. The AI will show you what it can do!
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CTA */}
+                    <div className="mb-8">
+                      <p className="text-lg text-slate-600 dark:text-slate-400 flex items-center justify-center gap-2 flex-wrap">
+                        <span>Click the</span>
+                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl font-semibold shadow-lg shadow-teal-500/30">
+                          <UploadIcon className="w-5 h-5" />
+                          Upload
+                        </span>
+                        <span>button above to get started</span>
+                      </p>
+                    </div>
+
+                    {/* Keyboard Shortcuts */}
+                    <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-200 dark:border-slate-700 rounded-xl p-6 max-w-2xl mx-auto">
+                      <p className="text-slate-800 dark:text-white font-semibold mb-4">Keyboard Shortcuts:</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div className="flex items-center justify-center gap-2">
+                          <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded font-mono text-xs">Cmd+K</kbd>
+                          <span className="text-slate-600 dark:text-slate-400">Search</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-2">
+                          <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded font-mono text-xs">Cmd+U</kbd>
+                          <span className="text-slate-600 dark:text-slate-400">Upload</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-2">
+                          <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded font-mono text-xs">ESC</kbd>
+                          <span className="text-slate-600 dark:text-slate-400">Close</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-2">
+                          <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded font-mono text-xs">←→</kbd>
+                          <span className="text-slate-600 dark:text-slate-400">Navigate</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Privacy Guarantee - Fixed at bottom */}
-                  <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-lg px-4">
-                    <div className="flex items-center justify-center gap-3 px-6 py-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-stone-200/50 dark:border-slate-700/50 rounded-2xl shadow-sm">
+                  <div className="mt-12">
+                    <div className="flex items-center justify-center gap-3 px-6 py-4 bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-sm max-w-lg mx-auto">
                       <ShieldCheckIcon className="w-6 h-6 text-teal-600 dark:text-teal-400 flex-shrink-0" />
                       <p className="text-sm text-slate-700 dark:text-slate-300">
                         <span className="font-semibold">Your privacy is protected.</span> All documents are encrypted and stored securely.

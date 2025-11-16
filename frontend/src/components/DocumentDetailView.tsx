@@ -117,65 +117,10 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
   return (
     <>
     <div className="flex flex-col min-h-full bg-stone-50 dark:bg-[#0B1120]">
-      {/* Header with Edit Controls */}
-      <header className="flex-shrink-0 flex items-center justify-end p-4 border-b border-stone-200 dark:border-slate-800">
-        {/* Edit Mode Toggle */}
-        {!isEditing && onUpdate && (
-          <button
-            onClick={handleStartEdit}
-            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-white bg-teal-600 hover:bg-teal-700 transition-colors shadow-md"
-          >
-            <PencilIcon className="w-4 h-4" />
-            <span className="text-sm font-semibold">Edit Document</span>
-          </button>
-        )}
-
-        {/* Save/Cancel/Delete Buttons for Edit Mode */}
-        {isEditing && (
-          <div className="flex items-center justify-between w-full">
-            {/* Delete button on the left */}
-            {onDelete && (
-              <button
-                onClick={() => onDelete(documentData.id)}
-                disabled={isSaving}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
-              >
-                <TrashIcon className="w-4 h-4" />
-                <span className="text-sm font-semibold">Delete</span>
-              </button>
-            )}
-
-            {/* Save/Cancel buttons on the right */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleCancelEdit}
-                disabled={isSaving}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 bg-stone-200 dark:bg-slate-700 hover:bg-stone-300 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
-              >
-                <XIcon className="w-4 h-4" />
-                <span className="text-sm font-semibold">Cancel</span>
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                disabled={isSaving}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors shadow-md disabled:opacity-50"
-              >
-                {isSaving ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                ) : (
-                  <CheckCircleIcon className="w-4 h-4" />
-                )}
-                <span className="text-sm font-semibold">{isSaving ? 'Saving...' : 'Save Changes'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </header>
-      
       {/* Main Content */}
       <main className="flex-grow p-6">
         <div className="max-w-4xl mx-auto">
-            {/* Page Title */}
+            {/* Page Title with Edit Controls */}
             <div className="mb-8">
               {isEditing ? (
                 <>
@@ -196,14 +141,66 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
                     className="w-full bg-white dark:bg-slate-800/60 border border-stone-300 dark:border-slate-700 rounded-lg p-3 text-3xl font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                     placeholder="Enter document title"
                   />
+
+                  {/* Save/Cancel/Delete Buttons */}
+                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-stone-200 dark:border-slate-800">
+                    {/* Delete button on the left */}
+                    {onDelete && (
+                      <button
+                        onClick={() => onDelete(documentData.id)}
+                        disabled={isSaving}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                        <span className="text-sm font-semibold">Delete</span>
+                      </button>
+                    )}
+
+                    {/* Save/Cancel buttons on the right */}
+                    <div className="flex items-center space-x-2 ml-auto">
+                      <button
+                        onClick={handleCancelEdit}
+                        disabled={isSaving}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 bg-stone-200 dark:bg-slate-700 hover:bg-stone-300 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                      >
+                        <XIcon className="w-4 h-4" />
+                        <span className="text-sm font-semibold">Cancel</span>
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={isSaving}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors shadow-md disabled:opacity-50"
+                      >
+                        {isSaving ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                        ) : (
+                          <CheckCircleIcon className="w-4 h-4" />
+                        )}
+                        <span className="text-sm font-semibold">{isSaving ? 'Saving...' : 'Save Changes'}</span>
+                      </button>
+                    </div>
+                  </div>
                 </>
               ) : (
-                <>
-                  <span className={`text-sm font-semibold px-3 py-1.5 rounded-lg ${lightColor} ${color}`}>
-                      {documentData.category}
-                  </span>
-                  <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mt-3">{documentData.displayName}</h1>
-                </>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <span className={`text-sm font-semibold px-3 py-1.5 rounded-lg ${lightColor} ${color}`}>
+                        {documentData.category}
+                    </span>
+                    <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mt-3">{documentData.displayName}</h1>
+                  </div>
+
+                  {/* Edit Button */}
+                  {onUpdate && (
+                    <button
+                      onClick={handleStartEdit}
+                      className="flex-shrink-0 flex items-center space-x-2 px-4 py-2 rounded-lg text-white bg-teal-600 hover:bg-teal-700 transition-colors shadow-md"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                      <span className="text-sm font-semibold">Edit</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             

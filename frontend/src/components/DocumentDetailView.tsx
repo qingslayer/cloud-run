@@ -116,47 +116,9 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
 
   return (
     <>
-    <div className="absolute inset-0 bg-stone-50 dark:bg-[#0B1120] z-50 flex flex-col p-4 overflow-hidden">
-      {/* Header */}
-      <header className="flex-shrink-0 flex items-center justify-between p-2 mb-4">
-        <div className="flex items-center gap-2">
-          <button onClick={onClose} className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors">
-              <ArrowLeftIcon className="w-5 h-5" />
-              <span className="text-sm font-semibold">Back to Timeline</span>
-          </button>
-
-          {/* Document Navigation */}
-          {navigationContext && (
-            <div className="flex items-center gap-2 ml-4 border-l border-slate-300 dark:border-slate-700 pl-4">
-              <button
-                onClick={() => onNavigate?.('prev')}
-                disabled={!navigationContext.hasPrev}
-                className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Previous document (←)"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                </svg>
-              </button>
-
-              <span className="text-sm text-slate-500 dark:text-slate-400 min-w-[4rem] text-center">
-                {navigationContext.currentIndex + 1} of {navigationContext.allDocuments.length}
-              </span>
-
-              <button
-                onClick={() => onNavigate?.('next')}
-                disabled={!navigationContext.hasNext}
-                className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Next document (→)"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
-
+    <div className="flex flex-col h-full bg-stone-50 dark:bg-[#0B1120] overflow-hidden">
+      {/* Header with Edit Controls */}
+      <header className="flex-shrink-0 flex items-center justify-end p-4 border-b border-stone-200 dark:border-slate-800">
         {/* Edit Mode Toggle */}
         {!isEditing && onUpdate && (
           <button
@@ -211,7 +173,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
       </header>
       
       {/* Main Content */}
-      <main className="flex-grow overflow-y-auto pr-2">
+      <main className="flex-grow overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto">
             {/* Page Title */}
             <div className="mb-8">

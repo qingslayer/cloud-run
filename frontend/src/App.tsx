@@ -14,7 +14,6 @@ import RightPanel from './components/RightPanel';
 import Settings from './components/Settings';
 import TopCommandBar from './components/TopCommandBar';
 import SearchResultsPage from './components/SearchResultsPage';
-import Breadcrumbs from './components/Breadcrumbs';
 import { sendChatMessage } from './services/chatService';
 import { processUniversalSearch } from './services/searchService';
 import { getDocuments, uploadDocument, updateDocument as apiUpdateDocument, deleteDocument as apiDeleteDocument, getDocument } from './services/documentProcessor';
@@ -537,19 +536,30 @@ const App: React.FC = () => {
               onSelectDocument={handleSelectDocument}
             />
           }
+          breadcrumbs={getBreadcrumbs()}
+          onBack={selectedDocumentId ? handleCloseDocumentDetail : undefined}
+          navigationContext={selectedDocumentId ? {
+            currentIndex: getNavigationContext().currentIndex,
+            total: getNavigationContext().allDocuments.length,
+            hasPrev: getNavigationContext().hasPrev,
+            hasNext: getNavigationContext().hasNext
+          } : undefined}
+          onNavigate={selectedDocumentId ? handleNavigateDocument : undefined}
         />
 
-        {/* Breadcrumb Navigation */}
-        {getBreadcrumbs().length > 0 && !selectedDocumentId && (
-          <div className="relative z-10 flex-shrink-0 px-4 sm:px-6 lg:px-8 py-3 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-b border-stone-200/50 dark:border-slate-800/50">
-            <div className="max-w-7xl mx-auto">
-              <Breadcrumbs items={getBreadcrumbs()} />
-            </div>
-          </div>
-        )}
-
-        <main className={`flex-1 overflow-y-auto transition-all duration-300 ${isRightPanelOpen ? 'pr-[25rem]' : ''}`}>
-          {renderMainContent()}
+        <main className={`flex-1 overflow-y-auto pt-20 transition-all duration-300 ${isRightPanelOpen ? 'pr-[25rem]' : ''}`}>
+          {selectedDocument ? (
+            <DocumentDetailView
+              documentData={selectedDocument}
+              onClose={handleCloseDocumentDetail}
+              onUpdate={handleUpdateDocument}
+              onDelete={handleRequestDeleteDocument}
+              navigationContext={getNavigationContext()}
+              onNavigate={handleNavigateDocument}
+            />
+          ) : (
+            renderMainContent()
+          )}
         </main>
 
         <RightPanel
@@ -560,17 +570,6 @@ const App: React.FC = () => {
           isLoading={isLoading}
           hasDocuments={documents.length > 0}
         />
-
-        {selectedDocument && (
-            <DocumentDetailView
-                documentData={selectedDocument}
-                onClose={handleCloseDocumentDetail}
-                onUpdate={handleUpdateDocument}
-                onDelete={handleRequestDeleteDocument}
-                navigationContext={getNavigationContext()}
-                onNavigate={handleNavigateDocument}
-            />
-        )}
 
        <ConfirmationModal
          isOpen={deleteConfirmation.isOpen}

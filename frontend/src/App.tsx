@@ -210,14 +210,12 @@ const App: React.FC = () => {
 
       setReviewModalDocument(null); // Close review modal
 
-      success("Document reviewed and saved successfully!");
-
     } catch (err) {
       console.error("Error approving document:", err);
       error("Failed to save reviewed document. Please try again.");
       throw err; // Re-throw so ReviewModal can handle it
     }
-  }, [reviewModalDocument, success, error]);
+  }, [reviewModalDocument, error]);
 
   const handleRequestDeleteDocument = useCallback((id: string) => {
     setDeleteConfirmation({

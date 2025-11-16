@@ -36,6 +36,7 @@ const Records: React.FC<RecordsProps> = ({
 }) => {
     const [filterType, setFilterType] = useState(initialFilter);
     const [sortBy, setSortBy] = useState('date_desc');
+    const [showPendingReviewOnly, setShowPendingReviewOnly] = useState(false);
 
     useEffect(() => {
         setFilterType(initialFilter);
@@ -43,7 +44,13 @@ const Records: React.FC<RecordsProps> = ({
 
     const sortedAndFilteredDocuments = useMemo(() => {
         const filtered = documents.filter(doc => {
-            // Category filter - apply to all documents
+            // Pending review filter
+            if (showPendingReviewOnly) {
+                const status = getDocumentProcessingStatus(doc);
+                if (status !== 'pending_review') return false;
+            }
+
+            // Category filter
             if (filterType !== 'all') {
                 return doc.category === filterType;
             }
@@ -51,20 +58,8 @@ const Records: React.FC<RecordsProps> = ({
             return true;
         });
 
+        // Sort by user preference (no priority sorting)
         return filtered.sort((a, b) => {
-            // Sort processing/pending review documents to the top
-            const statusA = getDocumentProcessingStatus(a);
-            const statusB = getDocumentProcessingStatus(b);
-
-            // Processing documents first
-            if (statusA === 'processing' && statusB !== 'processing') return -1;
-            if (statusA !== 'processing' && statusB === 'processing') return 1;
-
-            // Then pending review
-            if (statusA === 'pending_review' && statusB === 'reviewed') return -1;
-            if (statusA === 'reviewed' && statusB === 'pending_review') return 1;
-
-            // Within same status, apply user's sort preference
             switch (sortBy) {
                 case 'date_asc':
                     return new Date(a.uploadDate).getTime() - new Date(b.uploadDate).getTime();
@@ -77,7 +72,7 @@ const Records: React.FC<RecordsProps> = ({
                     return new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime();
             }
         });
-    }, [documents, filterType, sortBy]);
+    }, [documents, filterType, sortBy, showPendingReviewOnly]);
 
     const groupedDocuments = useMemo<{ [key: string]: DocumentFile[] }>(() => groupDocumentsByMonth(sortedAndFilteredDocuments), [sortedAndFilteredDocuments]);
 
@@ -266,29 +261,48 @@ const Records: React.FC<RecordsProps> = ({
 
                 {/* Review Queue Banner */}
                 {(() => {
-                    const pendingReview = sortedAndFilteredDocuments.filter(
+                    const pendingReview = documents.filter(
                         doc => getDocumentProcessingStatus(doc) === 'pending_review'
                     );
                     if (pendingReview.length === 0) return null;
 
+                    const handleMarkAllComplete = () => {
+                        pendingReview.forEach(doc => {
+                            onUpdateDocument(doc.id, { reviewedAt: new Date() });
+                        });
+                    };
+
                     return (
-                        <div className="mb-6 p-4 bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/30 border border-teal-400/60 dark:border-teal-600/60 rounded-xl shadow-sm">
+                        <div className={`mb-6 p-4 rounded-xl shadow-sm transition-all ${
+                            showPendingReviewOnly
+                                ? 'bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/50 dark:to-cyan-900/50 border-2 border-teal-500 dark:border-teal-400'
+                                : 'bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/30 border border-teal-400/60 dark:border-teal-600/60'
+                        }`}>
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-teal-500 dark:bg-teal-600 flex items-center justify-center">
+                                <div
+                                    className="flex items-center gap-3 flex-1 cursor-pointer group"
+                                    onClick={() => setShowPendingReviewOnly(!showPendingReviewOnly)}
+                                >
+                                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-teal-500 dark:bg-teal-600 group-hover:bg-teal-600 dark:group-hover:bg-teal-500 transition-colors flex items-center justify-center">
                                         <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                                         </svg>
                                     </div>
                                     <div>
-                                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">
+                                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
                                             {pendingReview.length} Document{pendingReview.length !== 1 ? 's' : ''} Pending Review
                                         </h3>
                                         <p className="text-sm text-teal-700 dark:text-teal-300">
-                                            Click on documents below to review AI-generated information
+                                            {showPendingReviewOnly ? 'Showing only pending reviews • Click to show all' : 'Click to filter • Review AI-generated information'}
                                         </p>
                                     </div>
                                 </div>
+                                <button
+                                    onClick={handleMarkAllComplete}
+                                    className="px-4 py-2 rounded-lg bg-white dark:bg-slate-800 border border-teal-400 dark:border-teal-600 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900/50 transition-colors text-sm font-semibold whitespace-nowrap ml-4"
+                                >
+                                    Mark All as Complete
+                                </button>
                             </div>
                         </div>
                     );

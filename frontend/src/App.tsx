@@ -188,13 +188,11 @@ const App: React.FC = () => {
         setSelectedDocumentData(updatedDoc);
       }
 
-      success("Document updated successfully!");
-
     } catch (err) {
       console.error("Error updating document:", err);
       error("Failed to update document. Please try again.");
     }
-  }, [selectedDocumentId, success, error]);
+  }, [selectedDocumentId, error]);
 
   const handleApproveReview = useCallback(async (updates: Partial<DocumentFile>) => {
     if (!reviewModalDocument) return;

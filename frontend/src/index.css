@@ -1,6 +1,9 @@
 /* Tailwind CSS v4 - Using Vite plugin */
 @import "tailwindcss";
 
+/* Configure class-based dark mode for Tailwind v4 */
+@variant dark (&:is(.dark *));
+
 /* Custom base styles - Tailwind's Preflight already resets margins/padding */
 /* DO NOT add * { margin: 0; padding: 0 } - it breaks Tailwind spacing! */
 

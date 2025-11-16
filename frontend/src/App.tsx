@@ -541,7 +541,7 @@ const App: React.FC = () => {
 
         {/* Breadcrumb Navigation */}
         {getBreadcrumbs().length > 0 && !selectedDocumentId && (
-          <div className="flex-shrink-0 px-4 sm:px-6 lg:px-8 py-3 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-b border-stone-200/50 dark:border-slate-800/50">
+          <div className="relative z-10 flex-shrink-0 px-4 sm:px-6 lg:px-8 py-3 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border-b border-stone-200/50 dark:border-slate-800/50">
             <div className="max-w-7xl mx-auto">
               <Breadcrumbs items={getBreadcrumbs()} />
             </div>
@@ -563,7 +563,7 @@ const App: React.FC = () => {
 
         {selectedDocument && (
             <DocumentDetailView
-                document={selectedDocument}
+                documentData={selectedDocument}
                 onClose={handleCloseDocumentDetail}
                 onUpdate={handleUpdateDocument}
                 onDelete={handleRequestDeleteDocument}

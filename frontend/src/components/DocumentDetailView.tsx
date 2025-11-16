@@ -23,7 +23,7 @@ interface NavigationContext {
 }
 
 interface DocumentDetailViewProps {
-  document: DocumentFile;
+  documentData: DocumentFile;
   onClose: () => void;
   onUpdate?: (id: string, updates: Partial<DocumentFile>) => Promise<void>;
   onDelete?: (id: string) => void;
@@ -33,18 +33,18 @@ interface DocumentDetailViewProps {
 
 const categories: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
 
-const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClose, onUpdate, onDelete, navigationContext, onNavigate }) => {
+const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, onClose, onUpdate, onDelete, navigationContext, onNavigate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
   // State for all editable fields
-  const [editedDisplayName, setEditedDisplayName] = useState(document.displayName || '');
-  const [editedCategory, setEditedCategory] = useState(document.category);
-  const [editedNotes, setEditedNotes] = useState(document.notes || '');
-  const [editedStructuredData, setEditedStructuredData] = useState(document.aiAnalysis?.structuredData || {});
+  const [editedDisplayName, setEditedDisplayName] = useState(documentData.displayName || '');
+  const [editedCategory, setEditedCategory] = useState(documentData.category);
+  const [editedNotes, setEditedNotes] = useState(documentData.notes || '');
+  const [editedStructuredData, setEditedStructuredData] = useState(documentData.aiAnalysis?.structuredData || {});
 
   const [isSaving, setIsSaving] = useState(false);
-  const { color, lightColor } = categoryInfoMap[document.category];
+  const { color, lightColor } = categoryInfoMap[documentData.category];
 
   // Keyboard navigation
   useEffect(() => {
@@ -68,15 +68,15 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [navigationContext, onNavigate]);
 
-  // When the document prop changes (e.g., after a save), reset the state
+  // When the documentData prop changes (e.g., after a save), reset the state
   useEffect(() => {
     if (!isEditing) {
-      setEditedDisplayName(document.displayName || '');
-      setEditedCategory(document.category);
-      setEditedNotes(document.notes || '');
-      setEditedStructuredData(document.aiAnalysis?.structuredData || {});
+      setEditedDisplayName(documentData.displayName || '');
+      setEditedCategory(documentData.category);
+      setEditedNotes(documentData.notes || '');
+      setEditedStructuredData(documentData.aiAnalysis?.structuredData || {});
     }
-  }, [document, isEditing]);
+  }, [documentData, isEditing]);
 
 
   const handleStartEdit = () => {
@@ -84,11 +84,11 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
   };
 
   const handleCancelEdit = () => {
-    // Reset state to original document values
-    setEditedDisplayName(document.displayName || '');
-    setEditedCategory(document.category);
-    setEditedNotes(document.notes || '');
-    setEditedStructuredData(document.aiAnalysis?.structuredData || {});
+    // Reset state to original documentData values
+    setEditedDisplayName(documentData.displayName || '');
+    setEditedCategory(documentData.category);
+    setEditedNotes(documentData.notes || '');
+    setEditedStructuredData(documentData.aiAnalysis?.structuredData || {});
     setIsEditing(false);
   };
 
@@ -104,7 +104,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
         'aiAnalysis.structuredData': editedStructuredData,
       };
 
-      await onUpdate(document.id, updatePayload);
+      await onUpdate(documentData.id, updatePayload);
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to save document:', error);
@@ -174,7 +174,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
             {/* Delete button on the left */}
             {onDelete && (
               <button
-                onClick={() => onDelete(document.id)}
+                onClick={() => onDelete(documentData.id)}
                 disabled={isSaving}
                 className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
               >
@@ -238,9 +238,9 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
               ) : (
                 <>
                   <span className={`text-sm font-semibold px-3 py-1.5 rounded-lg ${lightColor} ${color}`}>
-                      {document.category}
+                      {documentData.category}
                   </span>
-                  <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mt-3">{document.displayName}</h1>
+                  <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mt-3">{documentData.displayName}</h1>
                 </>
               )}
             </div>
@@ -253,13 +253,13 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Document Details</h2>
                         <div className="space-y-4 text-sm">
                             {/* Document Date (if extracted) */}
-                            {getDocumentDate(document) && (
+                            {getDocumentDate(documentData) && (
                               <div className="flex items-start">
                                   <CalendarIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mt-0.5 mr-3 flex-shrink-0" />
                                   <div>
                                       <p className="font-semibold text-slate-700 dark:text-slate-300">Document Date</p>
                                       <p className="text-slate-500 dark:text-slate-400">
-                                        {getDocumentDate(document)!.toLocaleDateString()} ({formatRelativeTime(getDocumentDate(document)!)})
+                                        {getDocumentDate(documentData)!.toLocaleDateString()} ({formatRelativeTime(getDocumentDate(documentData)!)})
                                       </p>
                                   </div>
                               </div>
@@ -270,10 +270,10 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                                 <CalendarIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mt-0.5 mr-3 flex-shrink-0" />
                                 <div>
                                     <p className="font-semibold text-slate-700 dark:text-slate-300">
-                                      {getDocumentDate(document) ? 'Uploaded' : 'Upload Date'}
+                                      {getDocumentDate(documentData) ? 'Uploaded' : 'Upload Date'}
                                     </p>
                                     <p className="text-slate-500 dark:text-slate-400">
-                                      {new Date(document.uploadDate).toLocaleDateString()} ({formatRelativeTime(new Date(document.uploadDate))})
+                                      {new Date(documentData.uploadDate).toLocaleDateString()} ({formatRelativeTime(new Date(documentData.uploadDate))})
                                     </p>
                                 </div>
                             </div>
@@ -294,13 +294,13 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                               >
                                   {/* Small thumbnail/icon */}
                                   <div className="flex-shrink-0 w-12 h-16 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
-                                      {document.downloadUrl ? (
-                                          document.filename.endsWith('.pdf') ? (
+                                      {documentData.downloadUrl ? (
+                                          documentData.filename.endsWith('.pdf') ? (
                                               <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
                                                   <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">PDF</span>
                                               </div>
                                           ) : (
-                                              <img src={document.downloadUrl} alt={document.filename} className="w-full h-full object-cover" />
+                                              <img src={documentData.downloadUrl} alt={documentData.filename} className="w-full h-full object-cover" />
                                           )
                                       ) : (
                                           <div className="w-full h-full bg-slate-100 dark:bg-slate-800" />
@@ -309,7 +309,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
 
                                   {/* File info */}
                                   <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{document.filename}</p>
+                                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{documentData.filename}</p>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Click to view full document</p>
                                   </div>
 
@@ -335,7 +335,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                                 />
                               </>
                             ) : (
-                              <StructuredDataDisplay data={document.aiAnalysis?.structuredData} category={document.category as DocumentCategory} />
+                              <StructuredDataDisplay data={documentData.aiAnalysis?.structuredData} category={documentData.category as DocumentCategory} />
                             )}
                         </div>
                     </div>
@@ -352,7 +352,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                                     onClick={handleStartEdit}
                                     className="text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium"
                                 >
-                                    {document.notes ? 'Edit' : 'Add notes'}
+                                    {documentData.notes ? 'Edit' : 'Add notes'}
                                 </button>
                             )}
                         </div>
@@ -363,8 +363,8 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                                 placeholder="Add any additional notes or comments about this document..."
                                 className="w-full bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-md p-3 text-base text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none resize-y min-h-[120px]"
                             />
-                        ) : document.notes ? (
-                            <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{document.notes}</p>
+                        ) : documentData.notes ? (
+                            <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{documentData.notes}</p>
                         ) : (
                             <p className="text-slate-400 dark:text-slate-500 text-sm italic">No notes added yet. Click "Add notes" to get started.</p>
                         )}
@@ -374,7 +374,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
         </div>
       </main>
     </div>
-    {isModalOpen && <DocumentPreviewModal document={document} onClose={() => setIsModalOpen(false)} />}
+    {isModalOpen && <DocumentPreviewModal document={documentData} onClose={() => setIsModalOpen(false)} />}
     </>
   );
 };

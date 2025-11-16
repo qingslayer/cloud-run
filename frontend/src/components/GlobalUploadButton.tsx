@@ -70,8 +70,10 @@ const GlobalUploadButton: React.FC<GlobalUploadButtonProps> = ({
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className={`group flex items-center justify-center w-11 h-11 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-full shadow-lg shadow-teal-500/40 hover:shadow-teal-500/60 hover:from-teal-700 hover:to-cyan-700 transition-all transform hover:scale-105 active:scale-100 ${
-          isOpen ? 'scale-105 from-teal-700 to-cyan-700 ring-2 ring-teal-400' : ''
+        className={`group flex items-center justify-center w-11 h-11 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
+          isOpen
+            ? 'scale-105 from-teal-700 to-cyan-700 shadow-xl shadow-teal-500/50 ring-2 ring-teal-400'
+            : 'shadow-teal-500/40 hover:shadow-teal-500/60 hover:from-teal-700 hover:to-cyan-700'
         }`}
         aria-label="Upload documents"
         title="Upload documents (Ctrl+U)"

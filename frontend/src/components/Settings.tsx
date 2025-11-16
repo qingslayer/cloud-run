@@ -10,9 +10,10 @@ interface SettingsProps {
     setTheme: (theme: Theme) => void;
     onDeleteAllRecords: () => void;
     currentUser: User | null;
+    onResetOnboarding?: () => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onDeleteAllRecords, currentUser }) => {
+const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onDeleteAllRecords, currentUser, onResetOnboarding }) => {
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [editedDisplayName, setEditedDisplayName] = useState('');
     const [isSaving, setIsSaving] = useState(false);
@@ -123,8 +124,9 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onDeleteAllRecords
                                 {!isEditingProfile && (
                                     <button
                                         onClick={handleStartEdit}
-                                        className="p-2 rounded-full text-slate-500 hover:text-teal-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
+                                        className="p-2 rounded-full text-slate-500 hover:text-teal-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                                         title="Edit profile"
+                                        aria-label="Edit profile"
                                     >
                                         <PencilIcon className="h-5 w-5" />
                                     </button>
@@ -137,14 +139,14 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onDeleteAllRecords
                                     <button
                                         onClick={handleCancelEdit}
                                         disabled={isSaving}
-                                        className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                                        className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         onClick={handleSaveProfile}
                                         disabled={isSaving || !editedDisplayName.trim()}
-                                        className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                                     >
                                         {isSaving ? 'Saving...' : 'Save'}
                                     </button>
@@ -178,7 +180,10 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onDeleteAllRecords
                                 <div className="grid grid-cols-3 gap-3">
                                     <button
                                         onClick={() => setTheme('light')}
-                                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                                        aria-label="Light theme"
+                                        aria-pressed={theme === 'light'}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all
+                                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
                                             theme === 'light'
                                                 ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
                                                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -194,7 +199,10 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onDeleteAllRecords
 
                                     <button
                                         onClick={() => setTheme('dark')}
-                                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                                        aria-label="Dark theme"
+                                        aria-pressed={theme === 'dark'}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all
+                                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
                                             theme === 'dark'
                                                 ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
                                                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -210,7 +218,10 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onDeleteAllRecords
 
                                     <button
                                         onClick={() => setTheme('system')}
-                                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                                        aria-label="System theme"
+                                        aria-pressed={theme === 'system'}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all
+                                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
                                             theme === 'system'
                                                 ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
                                                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -271,12 +282,38 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onDeleteAllRecords
                     <Card>
                          <CardHeader title="Data Management" subtitle="Manage your records in bulk." />
                          <div className="p-5">
-                             <button onClick={onDeleteAllRecords} className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors">
+                             <button
+                                onClick={onDeleteAllRecords}
+                                aria-label="Delete all records permanently"
+                                className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                            >
                                 <NoSymbolIcon className="w-5 h-5" />
                                 <span>Delete All Records</span>
                             </button>
                          </div>
                     </Card>
+
+                    {/* Tutorial */}
+                    {onResetOnboarding && (
+                        <Card>
+                            <CardHeader title="Tutorial" subtitle="Learn how to use HealthVault." />
+                            <div className="p-5">
+                                <button
+                                    onClick={onResetOnboarding}
+                                    aria-label="Reset onboarding tutorial"
+                                    className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold text-teal-600 dark:text-teal-400 bg-teal-500/10 hover:bg-teal-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                    </svg>
+                                    <span>Restart Tutorial</span>
+                                </button>
+                                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                                    Show welcome guide and tooltips again
+                                </p>
+                            </div>
+                        </Card>
+                    )}
 
                     {/* About */}
                      <Card>

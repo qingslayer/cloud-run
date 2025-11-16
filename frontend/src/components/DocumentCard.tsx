@@ -1,6 +1,5 @@
 import React from 'react';
 import { DocumentFile, getDocumentProcessingStatus } from '../types';
-import { DownloadIcon } from './icons/DownloadIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { PencilIcon } from './icons/PencilIcon';
 import { categoryInfoMap } from '../utils/category-info';
@@ -60,8 +59,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
   if (isProcessing) {
     return (
       <div className={`group relative flex items-center p-4 rounded-2xl shadow-sm transition-all duration-300 border
-          bg-white dark:bg-slate-800/50
-          border-amber-400/40 dark:border-amber-600/40
+          bg-gradient-to-r from-white to-amber-50/30 dark:from-slate-800/50 dark:to-amber-900/10
+          border-amber-400/50 dark:border-amber-600/50
           cursor-not-allowed`}
       >
         <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mr-4 ${lightColor} animate-pulse`}>
@@ -72,20 +71,23 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
           <p className="text-base font-bold text-slate-800 dark:text-slate-100 truncate" title={document.displayName || document.filename}>
             {document.displayName || document.filename}
           </p>
-          <div className="flex items-center space-x-2 mt-0.5">
+          <div className="flex items-center space-x-2 mt-1">
             <div className="flex space-x-1">
-              <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-              <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse animation-delay-200" />
-              <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse animation-delay-400" />
+              <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+              <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
+              <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
             </div>
-            <span className="text-sm text-amber-600 dark:text-amber-400">
-              AI analyzing...
+            <span className="text-sm font-medium text-amber-700 dark:text-amber-400">
+              AI analyzing document...
             </span>
           </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            This usually takes 10-30 seconds
+          </p>
         </div>
 
         <div className="flex-shrink-0 ml-4">
-          <div className="w-5 h-5 rounded-full border-2 border-amber-300 dark:border-amber-600 border-t-amber-500 dark:border-t-amber-400 animate-spin" />
+          <div className="w-6 h-6 rounded-full border-2 border-amber-300 dark:border-amber-600 border-t-amber-600 dark:border-t-amber-400 animate-spin" />
         </div>
       </div>
     );
@@ -94,10 +96,18 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
   return (
     <div
       onClick={handleCardClick}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleCardClick(e as any);
+        }
+      }}
       className={`group relative flex items-center p-4 rounded-2xl shadow-sm transition-all duration-300 border
           bg-white dark:bg-slate-800/50
           border-stone-200/80 dark:border-slate-800
-          cursor-pointer hover:shadow-md hover:border-teal-400/80 dark:hover:border-teal-500/80 hover:bg-stone-50/50 dark:hover:bg-slate-800 hover:scale-[1.01]`}
+          cursor-pointer hover:shadow-md hover:border-teal-400/80 dark:hover:border-teal-500/80 hover:bg-stone-50/50 dark:hover:bg-slate-800 hover:scale-[1.005]
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900`}
     >
       <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center mr-4 ${lightColor}`}>
         <CategoryIcon className={`w-6 h-6 ${color}`} />
@@ -128,29 +138,22 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
         <p className="text-sm text-slate-500 dark:text-slate-400 hidden md:block whitespace-nowrap">
           {formatRelativeTime(getDocumentDate(document) || new Date(document.uploadDate))}
         </p>
-        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
             {onEdit && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onEdit(document.id); }}
                     title="Edit"
-                    className="p-2 rounded-full text-slate-500 hover:text-teal-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
+                    aria-label={`Edit ${document.displayName}`}
+                    className="p-2 rounded-full text-slate-500 hover:text-teal-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                 >
                     <PencilIcon className="h-5 w-5" />
                 </button>
             )}
-            <a
-                href={document.downloadUrl}
-                download={document.filename}
-                title="Download"
-                onClick={(e) => e.stopPropagation()}
-                className="p-2 rounded-full text-slate-500 hover:text-teal-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
-            >
-                <DownloadIcon className="h-5 w-5" />
-            </a>
             <button
                 onClick={(e) => { e.stopPropagation(); onRemove(document.id); }}
                 title="Delete"
-                className="p-2 rounded-full text-slate-500 hover:text-red-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
+                aria-label={`Delete ${document.displayName}`}
+                className="p-2 rounded-full text-slate-500 hover:text-red-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             >
                 <TrashIcon className="h-5 w-5" />
             </button>

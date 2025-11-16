@@ -2,6 +2,8 @@ import React from 'react';
 import { PlusIcon } from './icons/PlusIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { InfoCircleIcon } from './icons/InfoCircleIcon';
+import EditableLabResults from './EditableLabResults';
+import EditablePrescriptions from './EditablePrescriptions';
 
 interface EditableStructuredDataProps {
   data: Record<string, any>;
@@ -21,6 +23,77 @@ const EditableStructuredData: React.FC<EditableStructuredDataProps> = ({ data, s
 
     if (!data) return <p className="text-center text-sm text-slate-500 dark:text-slate-400">No data was extracted. Please add details manually.</p>;
 
+    // Special handling for Lab Results
+    if (category === 'Lab Results' && data.results && Array.isArray(data.results)) {
+      return (
+        <div className="space-y-4">
+          {data.date && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Test Date</label>
+              <InputField
+                type="date"
+                value={data.date}
+                onChange={(e) => setData({ ...data, date: e.target.value })}
+              />
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Test Results</label>
+            <EditableLabResults
+              results={data.results}
+              onChange={(newResults) => setData({ ...data, results: newResults })}
+            />
+          </div>
+          {/* Allow adding other fields */}
+          {Object.entries(data).filter(([key]) => key !== 'date' && key !== 'results').map(([key, value]) => (
+            <div key={key}>
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">{key}</label>
+              <InputField
+                value={String(value)}
+                onChange={(e) => setData({ ...data, [key]: e.target.value })}
+              />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // Special handling for Prescriptions
+    if (category === 'Prescriptions' && data.prescriptions && Array.isArray(data.prescriptions)) {
+      return (
+        <div className="space-y-4">
+          {data.date && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Prescription Date</label>
+              <InputField
+                type="date"
+                value={data.date}
+                onChange={(e) => setData({ ...data, date: e.target.value })}
+              />
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Prescriptions</label>
+            <EditablePrescriptions
+              prescriptions={data.prescriptions}
+              onChange={(newPrescriptions) => setData({ ...data, prescriptions: newPrescriptions })}
+            />
+          </div>
+          {/* Allow adding other fields */}
+          {Object.entries(data).filter(([key]) => key !== 'date' && key !== 'prescriptions').map(([key, value]) => (
+            <div key={key}>
+              <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">{key}</label>
+              <InputField
+                value={String(value)}
+                onChange={(e) => setData({ ...data, [key]: e.target.value })}
+              />
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // For all other categories, use the existing simple field editor
     // Separate editable (simple) fields from complex ones
     const editableFields: [string, any][] = [];
     const complexFields: string[] = [];
@@ -80,7 +153,7 @@ const EditableStructuredData: React.FC<EditableStructuredDataProps> = ({ data, s
                     <div className="flex items-start space-x-2">
                         <InfoCircleIcon className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
                         <p className="text-sm text-amber-700 dark:text-amber-300">
-                            Complex data fields (like test results tables) cannot be edited directly. You can add notes below to supplement the information.
+                            Some complex data fields cannot be edited in this view. You can add notes below to supplement the information.
                         </p>
                     </div>
                 </div>

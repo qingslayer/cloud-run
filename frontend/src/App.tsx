@@ -19,6 +19,9 @@ import { sendChatMessage } from './services/chatService';
 import { processUniversalSearch } from './services/searchService';
 import { getDocuments, uploadDocument, updateDocument as apiUpdateDocument, deleteDocument as apiDeleteDocument, getDocument } from './services/documentProcessor';
 import { useToast } from './hooks/useToast';
+import { useOnboarding } from './hooks/useOnboarding';
+import WelcomeModal from './components/WelcomeModal';
+import OnboardingTooltip from './components/OnboardingTooltip';
 
 const App: React.FC = () => {
   const { toasts, removeToast, success, error, warning, info } = useToast();
@@ -31,6 +34,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
   const [selectedDocumentData, setSelectedDocumentData] = useState<DocumentFile | null>(null);
+  const [selectedDocumentEditMode, setSelectedDocumentEditMode] = useState(false);
   const isLoadingDocumentRef = useRef(false);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
   const [recordsFilter, setRecordsFilter] = useState<DocumentCategory | 'all'>('all');
@@ -58,6 +62,11 @@ const App: React.FC = () => {
   // State for review modal
   const [reviewModalDocument, setReviewModalDocument] = useState<DocumentFile | null>(null);
 
+  // Onboarding state
+  const { state: onboardingState, markComplete, dismissTooltip, shouldShowTooltip, resetOnboarding } = useOnboarding();
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const uploadButtonRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -78,6 +87,30 @@ const App: React.FC = () => {
 
     return () => unsubscribe();
   }, []);
+
+  // Show welcome modal for first-time users (only after initial document fetch completes)
+  const [initialFetchComplete, setInitialFetchComplete] = useState(false);
+
+  useEffect(() => {
+    // Mark initial fetch as complete only when:
+    // 1. We have a user
+    // 2. Loading is complete
+    // 3. We haven't already marked it complete
+    if (currentUser && !isDocumentsLoading && !initialFetchComplete) {
+      // Small delay to ensure documents state has fully updated
+      const timer = setTimeout(() => {
+        setInitialFetchComplete(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser, isDocumentsLoading, initialFetchComplete]);
+
+  useEffect(() => {
+    // Only show welcome modal after initial fetch is truly complete
+    if (initialFetchComplete && currentUser && !onboardingState.hasSeenWelcome && documents.length === 0) {
+      setShowWelcomeModal(true);
+    }
+  }, [initialFetchComplete, currentUser, onboardingState.hasSeenWelcome, documents.length]);
 
   // Poll for updates on documents that are still processing
   useEffect(() => {
@@ -218,6 +251,11 @@ const App: React.FC = () => {
 
   const handleFilesChange = (newFiles: DocumentFile[]) => {
     setDocuments(prevDocs => [...newFiles, ...prevDocs]);
+
+    // Mark onboarding milestone
+    if (!onboardingState.hasUploadedFirstDocument && newFiles.length > 0) {
+      markComplete('hasUploadedFirstDocument');
+    }
   };
 
   const handleUpdateDocument = useCallback(async (id: string, updates: Partial<DocumentFile>) => {
@@ -254,9 +292,36 @@ const App: React.FC = () => {
 
       setReviewModalDocument(null); // Close review modal
 
+      // Mark onboarding milestone ONLY when approved (reviewedAt is set)
+      if (!onboardingState.hasReviewedFirstDocument && updates.reviewedAt) {
+        markComplete('hasReviewedFirstDocument');
+      }
+
     } catch (err) {
       console.error("Error approving document:", err);
       error("Failed to save reviewed document. Please try again.");
+      throw err; // Re-throw so ReviewModal can handle it
+    }
+  }, [reviewModalDocument, error, onboardingState.hasReviewedFirstDocument, markComplete]);
+
+  const handleReviewLater = useCallback(async (updates: Partial<DocumentFile>) => {
+    if (!reviewModalDocument) return;
+
+    try {
+      const { id: _, ...safeUpdates } = updates as any;
+
+      const updatedDoc = await apiUpdateDocument(reviewModalDocument.id, safeUpdates);
+
+      setDocuments(prevDocs =>
+        prevDocs.map(doc => (doc.id === reviewModalDocument.id ? updatedDoc : doc))
+      );
+
+      setReviewModalDocument(null); // Close review modal
+      // Do NOT mark as reviewed - document stays in pending_review state
+
+    } catch (err) {
+      console.error("Error saving review changes:", err);
+      error("Failed to save changes. Please try again.");
       throw err; // Re-throw so ReviewModal can handle it
     }
   }, [reviewModalDocument, error]);
@@ -309,7 +374,7 @@ const App: React.FC = () => {
     selectedDocumentDataRef.current = selectedDocumentData;
   }, [selectedDocumentData]);
 
-  const handleSelectDocument = useCallback(async (id: string) => {
+  const handleSelectDocument = useCallback(async (id: string, editMode: boolean = false) => {
     if (isLoadingDocumentRef.current) {
       return;
     }
@@ -318,7 +383,7 @@ const App: React.FC = () => {
       (selectedDocumentIdRef.current === id) &&
       selectedDocumentDataRef.current?.id === id;
 
-    if (isCurrentlyDisplayed) {
+    if (isCurrentlyDisplayed && !editMode) {
       return;
     }
 
@@ -331,8 +396,8 @@ const App: React.FC = () => {
       // Check if document needs review
       const status = getDocumentProcessingStatus(fullDoc);
 
-      if (status === 'pending_review') {
-        // Open review modal instead of detail view
+      if (status === 'pending_review' && !editMode) {
+        // Open review modal instead of detail view (unless explicitly requesting edit mode)
         setReviewModalDocument(fullDoc);
       } else {
         // Open normal detail view for reviewed documents
@@ -341,6 +406,7 @@ const App: React.FC = () => {
 
         selectedDocumentIdRef.current = id;
         setSelectedDocumentId(id);
+        setSelectedDocumentEditMode(editMode);
 
         setViewedDocuments(prev => {
           const newSet = new Set(prev);
@@ -367,6 +433,7 @@ const App: React.FC = () => {
     isLoadingDocumentRef.current = false;
     setSelectedDocumentId(null);
     setSelectedDocumentData(null);
+    setSelectedDocumentEditMode(false);
   };
 
   // Get current document navigation context (memoized for performance)
@@ -454,6 +521,11 @@ const App: React.FC = () => {
     setPageSearchResults(null);
     setView('search');
 
+    // Mark onboarding milestone
+    if (!onboardingState.hasUsedSearch) {
+      markComplete('hasUsedSearch');
+    }
+
     try {
       const searchResult = await processUniversalSearch(query);
       setPageSearchResults(searchResult);
@@ -519,8 +591,14 @@ const App: React.FC = () => {
 
   const selectedDocument = selectedDocumentId ? selectedDocumentData : null;
 
+  // Show loading state during initial auth check
   if (isAuthLoading) {
     return <LoadingState message="Loading..." fullScreen />;
+  }
+
+  // Show loading state during initial document fetch (prevents flash of empty state)
+  if (currentUser && isDocumentsLoading && !initialFetchComplete) {
+    return <LoadingState message="Loading your health records..." fullScreen />;
   }
 
   if (!currentUser) {
@@ -544,7 +622,7 @@ const App: React.FC = () => {
                         viewedDocuments={viewedDocuments}
                    />;
         case 'settings':
-            return <Settings theme={theme} setTheme={setTheme} onDeleteAllRecords={handleDeleteAllRecords} currentUser={currentUser} />;
+            return <Settings theme={theme} setTheme={setTheme} onDeleteAllRecords={handleDeleteAllRecords} currentUser={currentUser} onResetOnboarding={resetOnboarding} />;
         case 'search':
             return <SearchResultsPage
                         results={pageSearchResults}
@@ -552,6 +630,7 @@ const App: React.FC = () => {
                         onSelectDocument={handleSelectDocument}
                         onAskFollowUp={handleAskFollowUp}
                         query={searchQuery}
+                        onSearch={handleSearchSubmit}
                    />;
     }
   }
@@ -595,6 +674,7 @@ const App: React.FC = () => {
               onDelete={handleRequestDeleteDocument}
               navigationContext={navigationContext}
               onNavigate={handleNavigateDocument}
+              initialEditMode={selectedDocumentEditMode}
             />
           ) : (
             renderMainContent()
@@ -614,6 +694,7 @@ const App: React.FC = () => {
           <ReviewModal
             document={reviewModalDocument}
             onApprove={handleApproveReview}
+            onReviewLater={handleReviewLater}
             onClose={() => setReviewModalDocument(null)}
           />
         )}
@@ -634,6 +715,41 @@ const App: React.FC = () => {
        />
 
        <ToastContainer toasts={toasts} onClose={removeToast} />
+
+       {/* Welcome Modal */}
+       {showWelcomeModal && (
+         <WelcomeModal
+           onClose={() => {
+             setShowWelcomeModal(false);
+             markComplete('hasSeenWelcome');
+           }}
+         />
+       )}
+
+       {/* Onboarding Tooltips */}
+       {currentUser && documents.length === 0 && !showWelcomeModal && shouldShowTooltip('upload-first-document') && (
+         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50">
+           <OnboardingTooltip
+             id="upload-first-document"
+             title="Upload Your First Document"
+             description="Click the upload button above to upload a medical document. Try a lab result or prescription to see AI in action!"
+             position="top"
+             onDismiss={dismissTooltip}
+           />
+         </div>
+       )}
+
+       {reviewModalDocument && !onboardingState.hasReviewedFirstDocument && shouldShowTooltip('review-document') && (
+         <div className="fixed top-24 right-8 z-[60] max-w-md">
+           <OnboardingTooltip
+             id="review-document"
+             title="Review AI Analysis"
+             description="The AI has extracted information from your document. Verify it's correct, make any edits, then click 'Approve & Save'."
+             position="left"
+             onDismiss={dismissTooltip}
+           />
+         </div>
+       )}
     </div>
   );
 };

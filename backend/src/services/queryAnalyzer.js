@@ -1,8 +1,9 @@
 import natural from 'natural';
 import { MEDICAL_SYNONYM_MAP } from './gemini/medicalSynonyms.js';
 
-// Initialize stemmer for word normalization
+// Initialize stemmer and string distance calculator for similarity
 const stemmer = natural.PorterStemmer;
+const levenshtein = natural.LevenshteinDistance;
 
 const ACTION_WORDS = ['show', 'list', 'find', 'get', 'display', 'give me', 'summarize', 'summary', 'overview'];
 const CATEGORY_WORDS = {
@@ -183,4 +184,80 @@ export function analyzeQuery(query) {
   // - Category + time: "recent labs", "2023 imaging"
   // - Document names: "Complete Blood Count"
   return { type: 'documents', category: foundCategory, keywords, timeRange, confidence: 0.8 };
+}
+
+/**
+ * Generate "Did you mean?" suggestions using Levenshtein distance.
+ * Suggests similar medical terms when a search query yields no results.
+ *
+ * @param {string} query - The user's search query.
+ * @param {number} maxDistance - Maximum edit distance threshold (default: 2).
+ * @returns {string[]} - Array of suggested alternative queries (max 3 suggestions).
+ */
+export function generateSimilaritySuggestions(query, maxDistance = 2) {
+  const normalizedQuery = query.toLowerCase().trim();
+  const suggestions = [];
+
+  // Build a dictionary of all medical terms from synonyms and categories
+  const medicalTerms = new Set();
+
+  // Add all medical synonym keys and values
+  Object.entries(MEDICAL_SYNONYM_MAP).forEach(([key, synonyms]) => {
+    medicalTerms.add(key);
+    synonyms.forEach(syn => medicalTerms.add(syn));
+  });
+
+  // Add all category keywords
+  Object.values(CATEGORY_WORDS).forEach(keywords => {
+    keywords.forEach(kw => medicalTerms.add(kw));
+  });
+
+  // Find similar terms using Levenshtein distance
+  const similarTerms = [];
+  for (const term of medicalTerms) {
+    const distance = levenshtein(normalizedQuery, term);
+
+    // Only suggest if:
+    // 1. Within max distance threshold
+    // 2. Not identical to the original query
+    // 3. Similar length (within 50% to avoid suggesting completely different terms)
+    const lengthRatio = Math.min(normalizedQuery.length, term.length) / Math.max(normalizedQuery.length, term.length);
+
+    if (distance <= maxDistance && distance > 0 && lengthRatio >= 0.5) {
+      similarTerms.push({ term, distance });
+    }
+  }
+
+  // Sort by distance (closest first) and take top 3
+  similarTerms.sort((a, b) => a.distance - b.distance);
+  const topSuggestions = similarTerms.slice(0, 3);
+
+  // For multi-word queries, also try suggesting corrections for individual words
+  const words = normalizedQuery.split(/\s+/).filter(w => w.length > 3);
+  if (words.length > 1 && topSuggestions.length < 3) {
+    words.forEach(word => {
+      for (const term of medicalTerms) {
+        const distance = levenshtein(word, term);
+        const lengthRatio = Math.min(word.length, term.length) / Math.max(word.length, term.length);
+
+        if (distance <= maxDistance && distance > 0 && lengthRatio >= 0.5) {
+          // Reconstruct the query with the corrected word
+          const suggestedQuery = normalizedQuery.replace(word, term);
+
+          // Avoid duplicates
+          if (!suggestions.includes(suggestedQuery) && !topSuggestions.some(s => s.term === suggestedQuery)) {
+            topSuggestions.push({ term: suggestedQuery, distance });
+          }
+        }
+      }
+    });
+  }
+
+  // Return unique suggestions (max 3)
+  const uniqueSuggestions = topSuggestions
+    .slice(0, 3)
+    .map(s => s.term)
+    .filter((term, index, self) => self.indexOf(term) === index);
+
+  return uniqueSuggestions;
 }

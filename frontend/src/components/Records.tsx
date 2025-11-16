@@ -15,7 +15,7 @@ interface RecordsProps {
   onUpdateDocument: (id: string, updates: Partial<DocumentFile>) => void;
   onRemoveDocument: (id:string) => void;
   onRemoveMultipleDocuments: (ids: string[]) => void;
-  onSelectDocument: (id: string) => void;
+  onSelectDocument: (id: string, editMode?: boolean) => void;
   initialFilter: DocumentCategory | 'all';
   onError?: (message: string) => void;
   viewedDocuments?: Set<string>;  // Track viewed documents
@@ -234,7 +234,10 @@ const Records: React.FC<RecordsProps> = ({
                                 <button
                                     key={cat}
                                     onClick={() => setFilterType(isAll ? 'all' : cat as DocumentCategory)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                                    aria-label={`Filter by ${isAll ? 'all categories' : cat}`}
+                                    aria-pressed={isActive}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
                                         isActive
                                             ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
                                             : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -377,7 +380,7 @@ const Records: React.FC<RecordsProps> = ({
                                                 document={doc}
                                                 onRemove={onRemoveDocument}
                                                 onView={onSelectDocument}
-                                                onEdit={onSelectDocument}
+                                                onEdit={(id) => onSelectDocument(id, true)}
                                                 isViewed={viewedDocuments.has(doc.id)}
                                             />
                                         ))}

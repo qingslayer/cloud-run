@@ -49,7 +49,7 @@ const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 4000, onClo
   };
 
   return (
-    <div className={`flex items-start space-x-3 bg-white dark:bg-slate-800 rounded-xl shadow-lg border-l-4 ${getBorderColor()} border-t border-r border-b border-stone-200 dark:border-slate-700 p-4 w-full max-w-sm animate-slide-in-right`}>
+    <div className={`flex items-start space-x-3 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-stone-200 dark:border-slate-700 border-l-4 ${getBorderColor()} p-4 w-full max-w-sm animate-slide-in-right`}>
       <div className="flex-shrink-0 mt-0.5">
         {getIcon()}
       </div>
@@ -59,7 +59,7 @@ const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 4000, onClo
       <div className="flex-shrink-0">
         <button
           onClick={() => onClose(id)}
-          className="p-1 rounded-full text-slate-400 hover:bg-stone-200 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-colors"
+          className="p-1 rounded-full text-slate-400 hover:bg-stone-200 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 transition-colors"
           aria-label="Close notification"
         >
           <XIcon className="h-4 w-4" />

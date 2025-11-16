@@ -6,7 +6,7 @@ import { getAIChatResponse } from '../services/gemini/chatService.js';
 import { getAISummary, getAIAnswer } from '../services/gemini/searchService.js';
 import { extractTextFromDocument, analyzeAndCategorizeDocument, extractStructuredData, generateSearchSummary } from '../services/gemini/documentProcessor.js';
 import { Firestore, FieldValue } from '@google-cloud/firestore';
-import { analyzeQuery } from '../services/queryAnalyzer.js';
+import { analyzeQuery, generateSimilaritySuggestions } from '../services/queryAnalyzer.js';
 import sessionCache from '../services/sessionCache.js';
 import { getCachedResults, setCachedResults, invalidateUserCache } from '../services/searchCache.js';
 import { rankDocuments } from '../services/searchRanking.js';
@@ -258,6 +258,14 @@ router.post('/search', async (req, res) => {
           results: documents,
           count: documents.length,
         };
+
+        // If no results found, provide similarity suggestions
+        if (documents.length === 0 && query.length > 3) {
+          const suggestions = generateSimilaritySuggestions(query);
+          if (suggestions.length > 0) {
+            result.suggestions = suggestions;
+          }
+        }
 
         // Cache the result for future requests
         setCachedResults(query, uid, result, cacheKey);

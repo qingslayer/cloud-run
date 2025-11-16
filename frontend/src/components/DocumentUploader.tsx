@@ -39,9 +39,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [dismissedDocIds, setDismissedDocIds] = useState<Set<string>>(new Set());
 
   // Compute documents needing attention (processing or pending review)
+  // Exclude documents that user has explicitly dismissed
   const documentsNeedingAttention = uploadedDocuments.filter(doc => {
+    if (dismissedDocIds.has(doc.id)) return false;
     const status = getDocumentProcessingStatus(doc);
     return status === 'processing' || status === 'pending_review';
   });
@@ -81,6 +84,24 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
     });
   }, [uploadedDocuments, uploadProgress]);
 
+  // Clean up dismissed IDs when documents finish processing (become pending_review)
+  useEffect(() => {
+    dismissedDocIds.forEach(docId => {
+      const doc = uploadedDocuments.find(d => d.id === docId);
+      if (doc) {
+        const status = getDocumentProcessingStatus(doc);
+        // If document finished processing, remove from dismissed list so it reappears
+        if (status === 'pending_review') {
+          setDismissedDocIds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(docId);
+            return newSet;
+          });
+        }
+      }
+    });
+  }, [uploadedDocuments, dismissedDocIds]);
+
   const handleFileChange = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
@@ -88,12 +109,12 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
     for (const file of Array.from(files)) {
       if (!ALLOWED_TYPES.includes(file.type)) {
-        const errorMsg = `File type not supported: ${file.name}. Please upload PDF, JPG, or PNG files.`;
+        const errorMsg = `${file.name} is not a supported file type. Please upload PDF, JPG, or PNG files.`;
         onError?.(errorMsg);
         continue;
       }
       if (file.size > MAX_SIZE_BYTES) {
-        const errorMsg = `File too large: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB). Maximum size is ${MAX_SIZE_MB} MB.`;
+        const errorMsg = `${file.name} is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum file size is ${MAX_SIZE_MB} MB.`;
         onError?.(errorMsg);
         continue;
       }
@@ -213,8 +234,14 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
   const handleDocumentClick = (progress: UploadProgress) => {
     if (progress.status === 'complete' && progress.documentId && onSelectDocument) {
       onSelectDocument(progress.documentId);
-      // Remove from upload progress immediately when clicked
+      // Remove from upload progress and mark document
       setUploadProgress(prev => prev.filter(p => p.documentId !== progress.documentId));
+
+      // Mark the document so it doesn't reappear in documentsNeedingAttention
+      const doc = uploadedDocuments.find(d => d.id === progress.documentId);
+      if (doc && doc.aiAnalysis && !doc.reviewedAt) {
+        onUpdateDocument(doc.id, { reviewedAt: new Date() });
+      }
     }
   };
 
@@ -224,23 +251,36 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
     // Remove from local upload progress
     setUploadProgress(prev => prev.filter(p => p.documentId !== progressToRemove.documentId));
 
-    // If it's a pending review document, mark as reviewed to remove from persistent list
     if (progressToRemove.documentId) {
       const doc = uploadedDocuments.find(d => d.id === progressToRemove.documentId);
-      if (doc && !doc.reviewedAt && doc.aiAnalysis) {
-        // Mark as reviewed so it doesn't show up again
-        onUpdateDocument(doc.id, { reviewedAt: new Date() });
+
+      if (doc) {
+        const status = getDocumentProcessingStatus(doc);
+
+        if (status === 'processing') {
+          // If still processing, just track dismissal locally (don't mark as reviewed)
+          setDismissedDocIds(prev => new Set(prev).add(progressToRemove.documentId!));
+        } else if (status === 'pending_review' && !doc.reviewedAt) {
+          // If pending review, mark as reviewed to permanently remove
+          onUpdateDocument(doc.id, { reviewedAt: new Date() });
+        }
       }
     }
   };
 
   const handleClearAll = () => {
-    // Mark all pending review documents as reviewed
     documentsNeedingAttention.forEach(doc => {
-      if (doc.aiAnalysis && !doc.reviewedAt) {
+      const status = getDocumentProcessingStatus(doc);
+
+      if (status === 'processing') {
+        // Track processing docs as dismissed
+        setDismissedDocIds(prev => new Set(prev).add(doc.id));
+      } else if (status === 'pending_review' && !doc.reviewedAt) {
+        // Mark pending review docs as reviewed
         onUpdateDocument(doc.id, { reviewedAt: new Date() });
       }
     });
+
     // Clear local upload progress
     setUploadProgress([]);
   };
@@ -295,9 +335,9 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
           {/* Header with count and Clear All button */}
           <div className="flex items-center justify-between">
             <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-              {documentsNeedingAttention.length > 0 && `${documentsNeedingAttention.length} document(s) pending review`}
+              {combinedProgress.filter(p => p.status === 'complete').length > 0 && `${combinedProgress.filter(p => p.status === 'complete').length} document(s) pending review`}
             </div>
-            {documentsNeedingAttention.length > 0 && (
+            {combinedProgress.filter(p => p.status === 'complete').length > 0 && (
               <button
                 onClick={handleClearAll}
                 className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
@@ -334,6 +374,18 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
                   {progress.error || getStatusText(progress.status)}
                 </p>
               </div>
+              {(progress.status === 'uploading' || progress.status === 'processing') && (
+                <button
+                  onClick={(e) => handleDismiss(progress, e)}
+                  className="flex-shrink-0 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors group/cancel"
+                  aria-label="Cancel upload"
+                  title="Cancel upload"
+                >
+                  <svg className="w-4 h-4 text-slate-400 group-hover/cancel:text-red-600 dark:group-hover/cancel:text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
               {(progress.status === 'complete' || progress.status === 'error') && (
                 <button
                   onClick={(e) => handleDismiss(progress, e)}

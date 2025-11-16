@@ -41,7 +41,10 @@ const NavItem: React.FC<{
         <button
             onClick={onClick}
             title={label}
-            className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300 group ${
+            aria-label={label}
+            aria-current={isActive ? 'page' : undefined}
+            className={`relative flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300 group
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
                 isActive
                 ? 'bg-teal-600 text-white'
                 : 'text-slate-500 dark:text-slate-400 hover:bg-stone-200/60 dark:hover:bg-slate-800/60'
@@ -139,7 +142,7 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
                     <button
                       onClick={handlePrevClick}
                       disabled={!navigationContext.hasPrev}
-                      className="flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-stone-200/80 dark:hover:bg-slate-800/80 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-stone-200/80 dark:hover:bg-slate-800/80 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                       title="Previous document"
                       aria-label="Previous document"
                     >
@@ -157,7 +160,7 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
                     <button
                       onClick={handleNextClick}
                       disabled={!navigationContext.hasNext}
-                      className="flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-stone-200/80 dark:hover:bg-slate-800/80 disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-stone-200/80 dark:hover:bg-slate-800/80 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                       title="Next document"
                       aria-label="Next document"
                     >
@@ -180,13 +183,14 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
         </div>
 
         {/* Center: Search Bar (Always visible) */}
-        <form onSubmit={handleSubmit} className="flex-grow flex items-center justify-center px-4 h-full">
-            <div className="flex items-center w-full max-w-md">
+        <form onSubmit={handleSubmit} className="flex-grow flex items-center justify-center px-2 sm:px-4 h-full">
+            <div className="flex items-center w-full max-w-md relative">
               <button
                 type="button"
                 onClick={toggleRightPanel}
                 title="AI Assistant"
-                className="flex items-center justify-center w-11 h-11 rounded-full text-slate-400 dark:text-slate-500 hover:text-teal-500 dark:hover:text-teal-400 transition-colors shrink-0"
+                aria-label="Toggle AI Assistant panel"
+                className="hidden sm:flex items-center justify-center w-11 h-11 rounded-full text-slate-400 dark:text-slate-500 hover:text-teal-500 dark:hover:text-teal-400 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
               >
                 <SparklesIcon className="w-6 h-6" />
               </button>
@@ -195,9 +199,22 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search records or ask a question..."
-                className="flex-grow pl-2 pr-4 py-3 bg-transparent text-left text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0"
+                aria-label="Search records or ask a question"
+                className="flex-grow pl-2 pr-10 py-3 bg-transparent text-left text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm sm:text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:rounded-lg"
                 autoComplete="off"
               />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  aria-label="Clear search"
+                  className="absolute right-2 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
         </form>
 
@@ -207,10 +224,13 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
             <div className="relative" ref={menuRef}>
                 <button
                     onClick={() => setIsMenuOpen(prev => !prev)}
-                    className="flex items-center justify-center w-11 h-11 rounded-full hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors overflow-hidden"
+                    aria-label="User menu"
+                    aria-expanded={isMenuOpen}
+                    aria-haspopup="true"
+                    className="flex items-center justify-center w-11 h-11 rounded-full hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
                 >
                     {currentUser?.photoURL ? (
-                        <img src={currentUser.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
+                        <img src={currentUser.photoURL} alt={`${currentUser.displayName || 'User'} profile`} className="w-8 h-8 rounded-full" />
                     ) : (
                         <UserCircleIcon className="h-8 w-8 text-slate-500 dark:text-slate-400" />
                     )}

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DocumentFile, DocumentCategory } from '../types';
 import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
 import { PencilIcon } from './icons/PencilIcon';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { XIcon } from './icons/XIcon';
 import { TrashIcon } from './icons/TrashIcon';
+import { EllipsisVerticalIcon } from './icons/EllipsisVerticalIcon';
 import StructuredDataDisplay from './StructuredDataDisplay';
 import EditableStructuredData from './EditableStructuredData';
 import { formatRelativeTime } from '../utils/formatters';
@@ -29,13 +30,17 @@ interface DocumentDetailViewProps {
   onDelete?: (id: string) => void;
   navigationContext?: NavigationContext;
   onNavigate?: (direction: 'prev' | 'next') => void;
+  initialEditMode?: boolean;  // Start in edit mode if true
 }
 
 const categories: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
 
-const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, onClose, onUpdate, onDelete, navigationContext, onNavigate }) => {
+const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, onClose, onUpdate, onDelete, navigationContext, onNavigate, initialEditMode = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(initialEditMode);
+  const [isEditingNotesOnly, setIsEditingNotesOnly] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // State for all editable fields
   const [editedDisplayName, setEditedDisplayName] = useState(documentData.displayName || '');
@@ -45,6 +50,23 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
 
   const [isSaving, setIsSaving] = useState(false);
   const { color, lightColor } = categoryInfoMap[documentData.category];
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuOpen]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -70,13 +92,13 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
 
   // When the documentData prop changes (e.g., after a save), reset the state
   useEffect(() => {
-    if (!isEditing) {
+    if (!isEditing && !isEditingNotesOnly) {
       setEditedDisplayName(documentData.displayName || '');
       setEditedCategory(documentData.category);
       setEditedNotes(documentData.notes || '');
       setEditedStructuredData(documentData.aiAnalysis?.structuredData || {});
     }
-  }, [documentData, isEditing]);
+  }, [documentData, isEditing, isEditingNotesOnly]);
 
 
   const handleStartEdit = () => {
@@ -112,6 +134,30 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Notes-only editing handlers
+  const handleEditNotesOnly = () => {
+    setIsEditingNotesOnly(true);
+  };
+
+  const handleSaveNotesOnly = async () => {
+    if (!onUpdate) return;
+    setIsSaving(true);
+    try {
+      await onUpdate(documentData.id, { notes: editedNotes });
+      setIsEditingNotesOnly(false);
+    } catch (error) {
+      console.error('Failed to save notes:', error);
+      // Error toast is handled in App.tsx
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelNotesOnly = () => {
+    setEditedNotes(documentData.notes || '');
+    setIsEditingNotesOnly(false);
   };
 
   return (
@@ -190,15 +236,49 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
                     <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mt-3">{documentData.displayName}</h1>
                   </div>
 
-                  {/* Edit Button */}
-                  {onUpdate && (
-                    <button
-                      onClick={handleStartEdit}
-                      className="flex-shrink-0 flex items-center space-x-2 px-4 py-2 rounded-lg text-white bg-teal-600 hover:bg-teal-700 transition-colors shadow-md"
-                    >
-                      <PencilIcon className="w-4 h-4" />
-                      <span className="text-sm font-semibold">Edit</span>
-                    </button>
+                  {/* Three-dot Menu */}
+                  {(onUpdate || onDelete) && (
+                    <div className="relative" ref={menuRef}>
+                      <button
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        aria-label="Document actions"
+                        aria-expanded={isMenuOpen}
+                        aria-haspopup="true"
+                        className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                      >
+                        <EllipsisVerticalIcon className="w-5 h-5" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isMenuOpen && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-stone-200 dark:border-slate-700 py-1 z-50">
+                          {onUpdate && (
+                            <button
+                              onClick={() => {
+                                handleStartEdit();
+                                setIsMenuOpen(false);
+                              }}
+                              className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                              <span>Edit Document</span>
+                            </button>
+                          )}
+                          {onDelete && (
+                            <button
+                              onClick={() => {
+                                onDelete(documentData.id);
+                                setIsMenuOpen(false);
+                              }}
+                              className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                              <span>Delete Document</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -259,7 +339,11 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
                                                   <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">PDF</span>
                                               </div>
                                           ) : (
-                                              <img src={documentData.downloadUrl} alt={documentData.filename} className="w-full h-full object-cover" />
+                                              <img
+                                                src={documentData.downloadUrl}
+                                                alt={`${documentData.category} - ${documentData.displayName || documentData.filename} - ${formatRelativeTime(getDocumentDate(documentData) || new Date(documentData.uploadDate))}`}
+                                                className="w-full h-full object-cover"
+                                              />
                                           )
                                       ) : (
                                           <div className="w-full h-full bg-slate-100 dark:bg-slate-800" />
@@ -277,6 +361,63 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
                               </div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Notes Section - Moved to left column */}
+                    <div className="group bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700/80 rounded-2xl shadow-sm p-5">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center">
+                                <ClipboardNotesIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mr-3" />
+                                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Notes</h2>
+                            </div>
+                            {!isEditing && !isEditingNotesOnly && onUpdate && (
+                                <button
+                                    onClick={handleEditNotesOnly}
+                                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-500 hover:text-teal-600 dark:text-slate-400 dark:hover:text-teal-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500"
+                                    aria-label="Edit notes"
+                                >
+                                    <PencilIcon className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+                        {(isEditing || isEditingNotesOnly) ? (
+                            <>
+                                <textarea
+                                    value={editedNotes}
+                                    onChange={(e) => setEditedNotes(e.target.value)}
+                                    placeholder="Add any additional notes or comments about this document..."
+                                    className="w-full bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-md p-3 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none resize-y min-h-[120px]"
+                                />
+                                {isEditingNotesOnly && (
+                                    <div className="flex items-center justify-end space-x-2 mt-3">
+                                        <button
+                                            onClick={handleCancelNotesOnly}
+                                            disabled={isSaving}
+                                            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 bg-stone-200 dark:bg-slate-700 hover:bg-stone-300 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                                        >
+                                            <XIcon className="w-3.5 h-3.5" />
+                                            <span>Cancel</span>
+                                        </button>
+                                        <button
+                                            onClick={handleSaveNotesOnly}
+                                            disabled={isSaving}
+                                            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-teal-600 hover:bg-teal-700 transition-colors shadow-md disabled:opacity-50"
+                                        >
+                                            {isSaving ? (
+                                                <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent" />
+                                            ) : (
+                                                <CheckCircleIcon className="w-3.5 h-3.5" />
+                                            )}
+                                            <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </>
+                        ) : documentData.notes ? (
+                            <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{documentData.notes}</p>
+                        ) : (
+                            <p className="text-slate-400 dark:text-slate-500 text-sm italic">No notes added yet. Hover to add notes.</p>
+                        )}
                     </div>
                 </div>
 
@@ -297,36 +438,6 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
                               <StructuredDataDisplay data={documentData.aiAnalysis?.structuredData} category={documentData.category as DocumentCategory} />
                             )}
                         </div>
-                    </div>
-
-                    {/* Notes Section - Always visible */}
-                    <div className="bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700/80 rounded-2xl shadow-sm p-5">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center">
-                                <ClipboardNotesIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mr-3" />
-                                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">Notes</h2>
-                            </div>
-                            {!isEditing && onUpdate && (
-                                <button
-                                    onClick={handleStartEdit}
-                                    className="text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium"
-                                >
-                                    {documentData.notes ? 'Edit' : 'Add notes'}
-                                </button>
-                            )}
-                        </div>
-                        {isEditing ? (
-                            <textarea
-                                value={editedNotes}
-                                onChange={(e) => setEditedNotes(e.target.value)}
-                                placeholder="Add any additional notes or comments about this document..."
-                                className="w-full bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-md p-3 text-base text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none resize-y min-h-[120px]"
-                            />
-                        ) : documentData.notes ? (
-                            <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{documentData.notes}</p>
-                        ) : (
-                            <p className="text-slate-400 dark:text-slate-500 text-sm italic">No notes added yet. Click "Add notes" to get started.</p>
-                        )}
                     </div>
                 </div>
             </div>

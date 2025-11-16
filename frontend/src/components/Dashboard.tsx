@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { DocumentFile, DocumentCategory } from '../types';
+import { DocumentFile, DocumentCategory, getDocumentProcessingStatus } from '../types';
 import { formatRelativeTime } from '../utils/formatters';
 import { categoryInfoMap } from '../utils/category-info';
 import { EmptyDashboard } from './illustrations/EmptyDashboard';
@@ -110,8 +110,12 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
     const categoryStats = useMemo(() => {
         const stats: { [key in DocumentCategory]?: number } = {};
 
+        // Only count documents that are not processing
         documents.forEach(doc => {
-            stats[doc.category] = (stats[doc.category] || 0) + 1;
+            const status = getDocumentProcessingStatus(doc);
+            if (status !== 'processing') {
+                stats[doc.category] = (stats[doc.category] || 0) + 1;
+            }
         });
 
         // Initialize all categories with 0 if not present
@@ -121,9 +125,11 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
 
         return stats;
     }, [documents]);
-    
+
     const recentDocuments = useMemo(() => {
-        return [...documents].sort((a, b) => b.uploadDate.getTime() - a.uploadDate.getTime()).slice(0, 5);
+        // Filter out processing documents from recent list
+        const completedDocs = documents.filter(doc => getDocumentProcessingStatus(doc) !== 'processing');
+        return [...completedDocs].sort((a, b) => b.uploadDate.getTime() - a.uploadDate.getTime()).slice(0, 5);
     }, [documents]);
 
 

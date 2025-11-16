@@ -12,6 +12,7 @@ interface SearchResultsPageProps {
   onSelectDocument: (id: string) => void;
   onAskFollowUp: () => void;
   query: string;
+  onSearch?: (query: string) => void;
 }
 
 const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
@@ -19,8 +20,17 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
   isLoading,
   onSelectDocument,
   onAskFollowUp,
-  query
+  query,
+  onSearch
 }) => {
+  const [refinedQuery, setRefinedQuery] = React.useState(query);
+
+  const handleRefineSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (refinedQuery.trim() && onSearch) {
+      onSearch(refinedQuery.trim());
+    }
+  };
   // Determine if there's an AI-generated response to display
   const hasAIResponse =
     (results?.type === 'answer' && results.answer) ||
@@ -55,7 +65,59 @@ const SearchResultsPage: React.FC<SearchResultsPageProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
             <h1 className="text-4xl font-bold tracking-tight text-slate-800 dark:text-white">{query}</h1>
+
+            {/* Search Refinement Input */}
+            {onSearch && (
+              <form onSubmit={handleRefineSearch} className="mt-4 max-w-2xl">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 relative">
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={refinedQuery}
+                      onChange={(e) => setRefinedQuery(e.target.value)}
+                      placeholder="Refine your search..."
+                      className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800/50 border border-stone-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!refinedQuery.trim() || refinedQuery === query}
+                    className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900"
+                  >
+                    Search
+                  </button>
+                </div>
+              </form>
+            )}
         </div>
+
+        {/* Did You Mean? Suggestions */}
+        {results?.type === 'documents' && results.suggestions && results.suggestions.length > 0 && documentsToShow.length === 0 && (
+          <div className="mb-6 p-4 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                  Did you mean?
+                </h3>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {results.suggestions.map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => onSearch?.(suggestion)}
+                      className="px-3 py-1.5 text-sm font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* AI Fallback Warning Banner */}
         {results?.fallback && (

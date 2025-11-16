@@ -9,6 +9,7 @@ import { categoryInfoMap } from '../utils/category-info';
 interface ReviewModalProps {
   document: DocumentFile;
   onApprove: (updates: Partial<DocumentFile>) => Promise<void>;
+  onReviewLater: (updates: Partial<DocumentFile>) => Promise<void>;
   onClose: () => void;
 }
 
@@ -21,7 +22,7 @@ const categories: DocumentCategory[] = [
   'Other'
 ];
 
-const ReviewModal: React.FC<ReviewModalProps> = ({ document, onApprove, onClose }) => {
+const ReviewModal: React.FC<ReviewModalProps> = ({ document, onApprove, onReviewLater, onClose }) => {
   const [editedDisplayName, setEditedDisplayName] = useState(document.displayName || document.filename);
   const [editedCategory, setEditedCategory] = useState(document.category as DocumentCategory);
   const [editedStructuredData, setEditedStructuredData] = useState(document.aiAnalysis?.structuredData || {});
@@ -57,8 +58,23 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ document, onApprove, onClose 
     }
   };
 
-  const handleReviewLater = () => {
-    onClose();
+  const handleReviewLater = async () => {
+    setIsSaving(true);
+    try {
+      // Save changes but DON'T mark as reviewed (no reviewedAt field)
+      await onReviewLater({
+        displayName: editedDisplayName,
+        category: editedCategory,
+        'aiAnalysis.structuredData': editedStructuredData,
+        notes: editedNotes,
+        // Intentionally NOT including reviewedAt - document stays in pending_review state
+      });
+      onClose();
+    } catch (error) {
+      console.error('Failed to save changes:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -87,9 +103,10 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ document, onApprove, onClose 
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={onClose} // Discards all changes and closes modal without saving
             className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            aria-label="Close"
+            aria-label="Close and discard changes"
+            title="Close without saving"
           >
             <XIcon className="w-5 h-5 text-slate-400" />
           </button>

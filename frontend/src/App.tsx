@@ -609,17 +609,6 @@ const App: React.FC = () => {
           isLoading={isLoading}
           hasDocuments={documents.length > 0}
         />
-      
-      // merge conflict
-
-<!--         {selectedDocument && (
-            <DocumentDetailView
-                document={selectedDocument}
-                onClose={handleCloseDocumentDetail}
-                onUpdate={handleUpdateDocument}
-                onDelete={handleRequestDeleteDocument}
-            />
-        )}
 
         {reviewModalDocument && (
           <ReviewModal
@@ -628,7 +617,7 @@ const App: React.FC = () => {
             onClose={() => setReviewModalDocument(null)}
           />
         )}
- -->
+
        <ConfirmationModal
          isOpen={deleteConfirmation.isOpen}
          onClose={() => setDeleteConfirmation({ isOpen: false, type: 'single', isDeleting: false })}

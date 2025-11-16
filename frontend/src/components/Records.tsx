@@ -36,45 +36,43 @@ const Records: React.FC<RecordsProps> = ({
 }) => {
     const [filterType, setFilterType] = useState(initialFilter);
     const [sortBy, setSortBy] = useState('date_desc');
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
 
-// merge conflict
-//     const [isDraggingOver, setIsDraggingOver] = useState(false);
+    const handleDragEnter = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.types.includes('Files')) {
+            setIsDraggingOver(true);
+        }
+    };
 
-//     const handleDragEnter = (e: React.DragEvent) => {
-//         e.preventDefault();
-//         e.stopPropagation();
-//         if (e.dataTransfer.types.includes('Files')) {
-//             setIsDraggingOver(true);
-//         }
-//     };
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
+        if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+            setIsDraggingOver(false);
+        }
+    };
 
-//     const handleDragLeave = (e: React.DragEvent) => {
-//         e.preventDefault();
-//         e.stopPropagation();
-//         const rect = e.currentTarget.getBoundingClientRect();
-//         const x = e.clientX;
-//         const y = e.clientY;
-//         if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
-//             setIsDraggingOver(false);
-//         }
-//     };
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
 
-//     const handleDragOver = (e: React.DragEvent) => {
-//         e.preventDefault();
-//         e.stopPropagation();
-//     };
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
 
-//     const handleDrop = (e: React.DragEvent) => {
-//         e.preventDefault();
-//         e.stopPropagation();
-//         setIsDraggingOver(false);
-
-//         const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
-//         if (uploadButton) {
-//             uploadButton.click();
-//         }
-//     };
-//     const [showPendingReviewOnly, setShowPendingReviewOnly] = useState(false);
+        const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
+        if (uploadButton) {
+            uploadButton.click();
+        }
+    };
+    const [showPendingReviewOnly, setShowPendingReviewOnly] = useState(false);
 
     useEffect(() => {
         setFilterType(initialFilter);

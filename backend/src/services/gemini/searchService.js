@@ -1,5 +1,4 @@
 import { ai, model } from './client.js';
-import { MEDICAL_TERMINOLOGY_GUIDE } from './medicalTerminology.js';
 
 /**
  * Search Service
@@ -65,7 +64,13 @@ While you cannot provide medical advice, you SHOULD make the information underst
 
 5. **Important Disclaimer**: Always include at the end: "I can show you what's in your records, but I cannot provide medical interpretation or advice. Please consult your healthcare provider for medical guidance."
 
-${MEDICAL_TERMINOLOGY_GUIDE}
+**USE YOUR MEDICAL EXPERTISE:**
+
+- Apply your comprehensive medical knowledge to understand terminology, test names, and abbreviations
+- Recognize standard reference ranges and units of measurement
+- Understand equivalent terms (e.g., "blood sugar" = glucose, "cholesterol" = lipids, "CBC" = Complete Blood Count)
+- Use your medical knowledge to accurately extract and present information
+- Leverage your understanding to identify what information is clinically relevant to the query
 
 --- DOCUMENT CONTEXT ---
 ${documentContext}
@@ -289,7 +294,13 @@ ${structuredDataStr ? '\nDetailed Values:\n' + structuredDataStr : ''}
    - NEVER add your own medical context, significance, implications, or interpretations
    - NEVER provide unsolicited trends, patterns, or insights unless explicitly asked
 
-${MEDICAL_TERMINOLOGY_GUIDE}
+**USE YOUR MEDICAL EXPERTISE:**
+
+- Apply your comprehensive medical knowledge to understand terminology, test names, and abbreviations
+- Recognize standard reference ranges and units of measurement
+- Understand equivalent terms (e.g., "blood sugar" = glucose, "cholesterol" = lipids, "CBC" = Complete Blood Count)
+- Use your medical knowledge to accurately extract and present information
+- Leverage your understanding to identify what information is clinically relevant to the query
 
 --- DOCUMENT CONTEXT ---
 ${documentContext}

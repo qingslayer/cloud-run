@@ -1,5 +1,4 @@
 import { ai, model } from './client.js';
-import { MEDICAL_TERMINOLOGY_GUIDE } from './medicalTerminology.js';
 
 function createSystemInstruction(documents) {
   const documentContext = documents
@@ -49,7 +48,13 @@ ${structuredDataStr ? '\nDetailed Values:\n' + structuredDataStr : ''}
 - NEVER guess, estimate, or make up medical information
 - If a question is unclear, ask for clarification
 
-${MEDICAL_TERMINOLOGY_GUIDE}
+**USE YOUR MEDICAL KNOWLEDGE:**
+
+- Leverage your comprehensive medical knowledge to understand terminology and test names
+- Recognize standard reference ranges and units of measurement
+- Understand equivalent terms (e.g., "blood sugar" = glucose, "cholesterol" = lipids)
+- Apply your medical expertise to accurately interpret document content
+- Use your knowledge to identify what information is clinically relevant
 
 **DOCUMENT REFERENCING:**
 

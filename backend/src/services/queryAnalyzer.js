@@ -1,5 +1,5 @@
-import { MEDICAL_SYNONYM_MAP } from './gemini/medicalTerminology.js';
 import natural from 'natural';
+import { MEDICAL_SYNONYM_MAP } from './gemini/medicalSynonyms.js';
 
 // Initialize stemmer for word normalization
 const stemmer = natural.PorterStemmer;

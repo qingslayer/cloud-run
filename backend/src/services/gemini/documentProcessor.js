@@ -208,32 +208,22 @@ Example: { "details": [
 IMPORTANT: Always include a "date" key with the document/visit/service date in YYYY-MM-DD format as the first item. Use clear, human-readable field names for other keys. Extract each distinct piece of information as a separate object in the details array.
 ` : '';
 
-  const prompt = `You are an expert medical data extraction specialist. Your task is to parse the provided medical document text and extract ALL clinically relevant information into a structured JSON object.
+  const prompt = `You are an expert medical data extraction specialist with comprehensive knowledge of medical terminology, test names, and clinical documentation.
 
 **Document Type:** "${category}"
 ${flexibleInstructions}
-**Guiding Principle:** If it helps a patient or doctor understand the medical record, extract it. If it's purely administrative or logistical information (other than provider/doctor names), skip it.
 
-**Extraction Rules:**
+**Core Task:** Extract ALL clinically relevant information from this medical document into structured JSON. Use your medical expertise to identify:
 
-1.  **BE COMPREHENSIVE WITH CLINICAL DATA:** Extract ALL available medical details. Do not summarize or pick and choose. For example, if there are multiple test results or medications, extract every single one.
-    - **IMPORTANT - Document Date:** ALWAYS extract the document date as a top-level "date" field in YYYY-MM-DD format. Look for test dates, collection dates, report dates, exam dates, visit dates, or prescription dates. This is the date the medical event occurred, NOT the report generation date. If multiple dates exist, use the most clinically relevant one (e.g., collection date for labs, exam date for imaging).
-    - **Providers/Doctors:** The names of attending physicians or specialists mentioned.
-    - **Diagnoses and Findings:** All specific medical conditions, observations, or results.
-    - **Test Results & Values:** For lab reports, capture every test name, its corresponding value, units, and reference range.
-    - **Medications & Instructions:** For prescriptions, capture every drug name, its strength/dosage, and all instructions for use.
-    - **Clinical Impressions & Recommendations:** The final summary, diagnosis, or advice from the medical professional.
-    - **Provider Notes:** The substantive clinical notes written by the doctor.
+1. **Document Date** (REQUIRED): Extract as "date" field in YYYY-MM-DD format. Look for test/collection/exam/visit/prescription dates (prioritize clinical event date over report generation date).
 
-2.  **STRICTLY IGNORE Administrative Noise:** Actively filter out and DO NOT include any of the following:
-    - Clinic/hospital contact information (names, addresses, phone numbers, emails, websites, fax numbers).
-    - Patient administrative IDs (MRN, Case No., Patient ID, Accession Number, etc.).
-    - Lab technician names or other administrative staff.
-    - Billing codes, insurance information, or financial details.
-    - Specimen collection/site details (e.g., "Collected on:", "Received on:", "Site: Left Arm").
-    - Any other administrative metadata (e.g., "Reported on:", page numbers, internal lab identifiers, letterhead information).
+2. **Clinical Information**: ALL medical findings, test results, medications, diagnoses, provider names, and clinical impressions. Be comprehensive - don't summarize.
 
-Adhere strictly to the provided JSON schema for the given document category. Only return a valid JSON object with no additional text or markdown.
+3. **Ignore Administrative Data**: Contact info, patient IDs, billing codes, specimen collection details, and other non-clinical metadata.
+
+**Your Medical Knowledge**: Leverage your understanding of medical terminology, standard test names, reference ranges, and clinical documentation to extract accurate, complete information.
+
+Adhere strictly to the provided JSON schema. Return only valid JSON with no additional text.
 
 --- DOCUMENT TEXT ---
 ${extractedText}
@@ -287,41 +277,24 @@ export async function generateSearchSummary(extractedText, category, structuredD
 
   const prompt = `You are creating a concise search summary for a medical document. This summary will be used by an AI to answer user questions efficiently.
 
-**Document Category:** ${category}
+Create a concise 200-500 character search summary for this ${category} document.
 
 **Structured Data:**
 ${structuredContext}
 
-**Full Text (first 8000 chars):**
+**Document Text (first 8000 chars):**
 ${extractedText.substring(0, 8000)}
 
-**Your Task:**
-Create a 200-500 character summary that includes:
-1. Document type and date (if available)
-2. Provider/facility (if available)
-3. Key medical findings, values, or information
-4. All findings (both normal and abnormal values)
-5. Overall conclusion/impression if stated in the document
-
-**Format Guidelines:**
-- Be concise but information-dense
+**Requirements:**
+- Include: document type, date, provider/facility, key findings/values, overall conclusion
 - Use natural language (not bullet points)
 - Include specific medical values when relevant
-- Present all findings factually without interpretation or emphasis
-- Do NOT add prefixes like ⚠️ or labels like "HIGH" unless they appear in the original document
-- Include what the document states about normal vs abnormal results
-- Make it easy for AI to answer questions like "what's my cholesterol?" or "when was my last checkup?"
+- Present findings factually without interpretation
+- Leverage your medical knowledge to identify what's clinically significant
 
-**Example for Lab Results:**
-"Complete Blood Count from October 15, 2023 at LabCorp by Dr. Smith. WBC 7.2, RBC 4.8, Hemoglobin 14.2 g/dL, Platelets 245k. All values within normal reference ranges. No abnormalities detected."
+**Example:** "Complete Blood Count from October 15, 2023 at LabCorp by Dr. Smith. WBC 7.2, RBC 4.8, Hemoglobin 14.2 g/dL, Platelets 245k. All values within normal ranges."
 
-**Example for Prescription:**
-"Prescription from Dr. Johnson dated March 3, 2024. Lisinopril 10mg once daily for blood pressure management. Metformin 500mg twice daily with meals for diabetes control. 30-day supply with 2 refills available."
-
-**Example for Lab Results with Abnormalities (as stated in document):**
-"Lipid Panel from January 12, 2024 at CardioClinic by Dr. Martinez. Total cholesterol 245 mg/dL (reference <200), LDL 160 mg/dL (reference <100), HDL 45 mg/dL (reference >40), Triglycerides 200 mg/dL (reference <150). Doctor noted elevated cardiovascular risk."
-
-Now create the summary:`;
+Generate the summary:`;
 
   try {
     const response = await ai.models.generateContent({

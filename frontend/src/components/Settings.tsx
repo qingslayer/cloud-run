@@ -231,6 +231,42 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onDeleteAllRecords
                         </div>
                     </Card>
 
+                    {/* Keyboard Shortcuts */}
+                    <Card>
+                        <CardHeader title="Keyboard Shortcuts" subtitle="Learn shortcuts to navigate faster." />
+                        <div className="p-5">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-stone-50 dark:bg-slate-800/50">
+                                    <span className="text-slate-700 dark:text-slate-300">Focus search</span>
+                                    <kbd className="px-2 py-1 text-xs font-semibold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded">
+                                        ⌘K
+                                    </kbd>
+                                </div>
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-stone-50 dark:bg-slate-800/50">
+                                    <span className="text-slate-700 dark:text-slate-300">Upload documents</span>
+                                    <kbd className="px-2 py-1 text-xs font-semibold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded">
+                                        ⌘U
+                                    </kbd>
+                                </div>
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-stone-50 dark:bg-slate-800/50">
+                                    <span className="text-slate-700 dark:text-slate-300">Close panels/views</span>
+                                    <kbd className="px-2 py-1 text-xs font-semibold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded">
+                                        ESC
+                                    </kbd>
+                                </div>
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-stone-50 dark:bg-slate-800/50">
+                                    <span className="text-slate-700 dark:text-slate-300">Navigate documents</span>
+                                    <kbd className="px-2 py-1 text-xs font-semibold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded">
+                                        ← →
+                                    </kbd>
+                                </div>
+                            </div>
+                            <p className="mt-4 text-xs text-slate-500 dark:text-slate-400">
+                                <span className="font-semibold">Tip:</span> Use ⌘ (Command) on Mac or Ctrl on Windows/Linux
+                            </p>
+                        </div>
+                    </Card>
+
                     {/* Data Management */}
                     <Card>
                          <CardHeader title="Data Management" subtitle="Manage your records in bulk." />

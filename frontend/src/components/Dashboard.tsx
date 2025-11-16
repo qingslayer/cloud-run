@@ -25,10 +25,10 @@ const CategoryTile: React.FC<{ category: DocumentCategory; count: number; onClic
     return (
         <button
             onClick={onClick}
-            className={`group relative text-left w-full h-full flex flex-col justify-between p-5 rounded-3xl shadow-sm transition-all duration-300 overflow-hidden border
+            className={`group relative text-left w-full h-full flex flex-col justify-between p-5 rounded-3xl shadow-sm transition-all duration-200 overflow-hidden border
             ${gradient}
             border-stone-200/80 dark:border-slate-800
-            hover:shadow-xl hover:scale-[1.03] hover:border-teal-400/80 dark:hover:border-teal-500/80`}
+            hover:shadow-md hover:border-teal-400/60 dark:hover:border-teal-500/60`}
         >
             <div>
                 <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${lightColor}`}>
@@ -49,7 +49,7 @@ const RecentDocumentItem: React.FC<{ document: DocumentFile, onSelect: (id: stri
         <li>
           <button
             onClick={() => onSelect(document.id)}
-            className="w-full text-left flex items-center justify-between p-3 -mx-3 rounded-2xl hover:bg-stone-100 dark:hover:bg-slate-800/60 transition-all duration-200 hover:scale-[1.01] hover:shadow-sm"
+            className="w-full text-left flex items-center justify-between p-3 -mx-3 rounded-2xl hover:bg-stone-100/60 dark:hover:bg-slate-800/40 transition-colors duration-150"
           >
             <div className="flex items-center min-w-0">
                 <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg mr-3 ${lightColor}`}>

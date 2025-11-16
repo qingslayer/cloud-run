@@ -70,14 +70,13 @@ const GlobalUploadButton: React.FC<GlobalUploadButtonProps> = ({
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className={`group flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-bold rounded-xl shadow-xl shadow-teal-500/40 hover:shadow-teal-500/60 hover:from-teal-700 hover:to-cyan-700 transition-all transform hover:scale-110 active:scale-105 ${
-          isOpen ? 'scale-110 from-teal-700 to-cyan-700 ring-2 ring-teal-400' : ''
+        className={`group flex items-center justify-center w-11 h-11 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-full shadow-lg shadow-teal-500/40 hover:shadow-teal-500/60 hover:from-teal-700 hover:to-cyan-700 transition-all transform hover:scale-105 active:scale-100 ${
+          isOpen ? 'scale-105 from-teal-700 to-cyan-700 ring-2 ring-teal-400' : ''
         }`}
         aria-label="Upload documents"
         title="Upload documents (Ctrl+U)"
       >
-        <UploadIcon className={`w-5 h-5 mr-2 ${isOpen ? 'animate-bounce' : ''}`} />
-        <span className="text-sm tracking-wide">Upload</span>
+        <UploadIcon className={`w-5 h-5 ${isOpen ? 'animate-bounce' : ''}`} />
       </button>
 
       {/* Dropdown Panel */}

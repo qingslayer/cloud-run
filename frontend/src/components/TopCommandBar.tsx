@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User } from 'firebase/auth';
 import { UserCircleIcon } from './icons/UserCircleIcon';
 import UserMenu from './UserMenu';
@@ -70,13 +70,25 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
     const [query, setQuery] = useState('');
     const menuRef = useRef<HTMLDivElement>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = useCallback((e: React.FormEvent) => {
         e.preventDefault();
         if (query.trim()) {
           onSearch(query);
           setQuery('');
         }
-    };
+    }, [query, onSearch]);
+
+    const handlePrevClick = useCallback(() => {
+        if (onNavigate && navigationContext?.hasPrev) {
+          onNavigate('prev');
+        }
+    }, [onNavigate, navigationContext?.hasPrev]);
+
+    const handleNextClick = useCallback(() => {
+        if (onNavigate && navigationContext?.hasNext) {
+          onNavigate('next');
+        }
+    }, [onNavigate, navigationContext?.hasNext]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -91,8 +103,8 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
     }, []);
 
   return (
-    <header className="fixed top-4 left-1/2 -translate-x-1/2 z-40 w-full max-w-4xl px-4">
-      <div className="w-full flex items-center h-16 px-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl rounded-full border border-stone-200/80 dark:border-slate-800 shadow-lg">
+    <header className="sticky top-0 z-40 w-full flex justify-center px-4 py-4">
+      <div className="w-full max-w-4xl flex items-center h-16 px-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-full border border-stone-200/80 dark:border-slate-800 shadow-lg">
 
         {/* Left: Dynamic Navigation Icons */}
         <div className="flex items-center space-x-2">
@@ -107,37 +119,53 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
             {/* If viewing a document, show back + prev/next */}
             {onBack ? (
               <>
+                {/* Back button - visually distinct */}
                 <NavItem
                   icon={<ArrowLeftIcon className="w-5 h-5" />}
                   label="Back"
                   isActive={false}
                   onClick={onBack}
                 />
+
+                {/* Visual separator */}
                 {navigationContext && onNavigate && (
-                  <>
+                  <div className="h-8 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
+                )}
+
+                {/* Document navigation with counter */}
+                {navigationContext && onNavigate && (
+                  <div className="flex items-center gap-1">
                     {/* Previous document */}
                     <button
-                      onClick={() => onNavigate('prev')}
+                      onClick={handlePrevClick}
                       disabled={!navigationContext.hasPrev}
-                      className="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300 text-slate-500 dark:text-slate-400 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed"
-                      title={`Previous document (${navigationContext.currentIndex + 1}/${navigationContext.total})`}
+                      className="flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-stone-200/80 dark:hover:bg-slate-800/80 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Previous document"
+                      aria-label="Previous document"
                     >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                       </svg>
                     </button>
+
+                    {/* Counter */}
+                    <span className="text-xs font-medium text-slate-600 dark:text-slate-400 px-2 min-w-[3rem] text-center">
+                      {navigationContext.currentIndex + 1} / {navigationContext.total}
+                    </span>
+
                     {/* Next document */}
                     <button
-                      onClick={() => onNavigate('next')}
+                      onClick={handleNextClick}
                       disabled={!navigationContext.hasNext}
-                      className="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300 text-slate-500 dark:text-slate-400 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed"
-                      title={`Next document (${navigationContext.currentIndex + 1}/${navigationContext.total})`}
+                      className="flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-stone-200/80 dark:hover:bg-slate-800/80 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Next document"
+                      aria-label="Next document"
                     >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                       </svg>
                     </button>
-                  </>
+                  </div>
                 )}
               </>
             ) : (

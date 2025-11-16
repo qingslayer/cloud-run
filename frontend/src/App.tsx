@@ -507,7 +507,7 @@ const App: React.FC = () => {
           onNavigate={selectedDocumentId ? handleNavigateDocument : undefined}
         />
 
-        <main className={`flex-1 overflow-y-auto pt-20 transition-all duration-300 ${isRightPanelOpen ? 'pr-[25rem]' : ''}`}>
+        <main className={`flex-1 overflow-y-auto transition-all duration-300 ${isRightPanelOpen ? 'pr-[25rem]' : ''}`}>
           {selectedDocument ? (
             <DocumentDetailView
               documentData={selectedDocument}

@@ -6,7 +6,7 @@ import { View, Theme } from '../types';
 import { HomeIcon } from './icons/HomeIcon';
 import { FolderIcon } from './icons/FolderIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
-import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
+import { ArrowBackIcon } from './icons/ArrowBackIcon';
 
 export interface NavigationContext {
   currentIndex: number;
@@ -103,8 +103,8 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
     }, []);
 
   return (
-    <header className="sticky top-0 z-40 w-full flex justify-center px-4 py-4">
-      <div className="w-full max-w-4xl flex items-center h-16 px-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-full border border-stone-200/80 dark:border-slate-800 shadow-lg">
+    <header className="flex-shrink-0 sticky top-0 z-40 w-full flex justify-center px-4 py-3 bg-white/80 dark:bg-[#0B1120]/80 backdrop-blur-xl">
+      <div className="w-full max-w-4xl flex items-center h-14 px-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl rounded-full border border-stone-200/80 dark:border-slate-800 shadow-lg">
 
         {/* Left: Dynamic Navigation Icons */}
         <div className="flex items-center space-x-2">
@@ -121,7 +121,7 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
               <>
                 {/* Back button - visually distinct */}
                 <NavItem
-                  icon={<ArrowLeftIcon className="w-5 h-5" />}
+                  icon={<ArrowBackIcon className="w-6 h-6" />}
                   label="Back"
                   isActive={false}
                   onClick={onBack}
@@ -195,7 +195,8 @@ const TopCommandBar: React.FC<TopCommandBarProps> = ({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search records or ask a question..."
-                className="flex-grow pl-2 pr-4 py-3 bg-transparent text-left text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+                className="flex-grow pl-2 pr-4 py-3 bg-transparent text-left text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0"
+                autoComplete="off"
               />
             </div>
         </form>

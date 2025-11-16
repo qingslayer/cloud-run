@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from './config/firebase';
 import { DocumentFile, ChatMessage as ChatMessageType, DocumentCategory, Theme, View, UniversalSearchResult } from './types';
@@ -293,8 +293,8 @@ const App: React.FC = () => {
     setSelectedDocumentData(null);
   };
 
-  // Get current document navigation context
-  const getNavigationContext = () => {
+  // Get current document navigation context (memoized for performance)
+  const navigationContext = useMemo(() => {
     // Get currently visible documents based on view and filter
     let visibleDocs = documents.filter(doc => doc.status === 'complete');
 
@@ -313,10 +313,10 @@ const App: React.FC = () => {
       hasPrev: currentIndex > 0,
       hasNext: currentIndex < visibleDocs.length - 1
     };
-  };
+  }, [documents, view, recordsFilter, selectedDocumentId]);
 
-  const handleNavigateDocument = (direction: 'prev' | 'next') => {
-    const { allDocuments, currentIndex } = getNavigationContext();
+  const handleNavigateDocument = useCallback((direction: 'prev' | 'next') => {
+    const { allDocuments, currentIndex } = navigationContext;
 
     if (currentIndex === -1) return;
 
@@ -330,7 +330,7 @@ const App: React.FC = () => {
     if (newIndex !== currentIndex && allDocuments[newIndex]) {
       handleSelectDocument(allDocuments[newIndex].id);
     }
-  };
+  }, [navigationContext, handleSelectDocument]);
 
   const handleSendMessage = useCallback(async (message: string) => {
     if (!message.trim()) return;
@@ -478,7 +478,7 @@ const App: React.FC = () => {
   }
 
   return (
-     <div className="font-sans h-screen overflow-hidden flex flex-col">
+     <div className="font-sans h-screen flex flex-col bg-white dark:bg-[#0B1120]">
         <TopCommandBar
           activeView={view}
           setView={handleSetView}
@@ -499,22 +499,22 @@ const App: React.FC = () => {
           }
           onBack={selectedDocumentId ? handleCloseDocumentDetail : undefined}
           navigationContext={selectedDocumentId ? {
-            currentIndex: getNavigationContext().currentIndex,
-            total: getNavigationContext().allDocuments.length,
-            hasPrev: getNavigationContext().hasPrev,
-            hasNext: getNavigationContext().hasNext
+            currentIndex: navigationContext.currentIndex,
+            total: navigationContext.allDocuments.length,
+            hasPrev: navigationContext.hasPrev,
+            hasNext: navigationContext.hasNext
           } : undefined}
           onNavigate={selectedDocumentId ? handleNavigateDocument : undefined}
         />
 
-        <main className={`flex-1 overflow-y-auto transition-all duration-300 ${isRightPanelOpen ? 'pr-[25rem]' : ''}`}>
+        <main className={`flex-1 overflow-y-auto bg-stone-50 dark:bg-[#0B1120] transition-all duration-300 ${isRightPanelOpen ? 'pr-[25rem]' : ''}`}>
           {selectedDocument ? (
             <DocumentDetailView
               documentData={selectedDocument}
               onClose={handleCloseDocumentDetail}
               onUpdate={handleUpdateDocument}
               onDelete={handleRequestDeleteDocument}
-              navigationContext={getNavigationContext()}
+              navigationContext={navigationContext}
               onNavigate={handleNavigateDocument}
             />
           ) : (

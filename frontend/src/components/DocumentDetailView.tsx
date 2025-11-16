@@ -116,7 +116,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
 
   return (
     <>
-    <div className="flex flex-col h-full bg-stone-50 dark:bg-[#0B1120] overflow-hidden">
+    <div className="flex flex-col min-h-full bg-stone-50 dark:bg-[#0B1120]">
       {/* Header with Edit Controls */}
       <header className="flex-shrink-0 flex items-center justify-end p-4 border-b border-stone-200 dark:border-slate-800">
         {/* Edit Mode Toggle */}
@@ -173,7 +173,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
       </header>
       
       {/* Main Content */}
-      <main className="flex-grow overflow-y-auto p-6">
+      <main className="flex-grow p-6">
         <div className="max-w-4xl mx-auto">
             {/* Page Title */}
             <div className="mb-8">

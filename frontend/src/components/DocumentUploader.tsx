@@ -307,8 +307,8 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
             )}
           </div>
 
-          {/* Scrollable progress list with max height */}
-          <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent">
+          {/* Scrollable progress list with max height (shows ~3 docs) */}
+          <div className="max-h-[240px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent">
             {combinedProgress.map((progress, idx) => (
             <div
               key={idx}

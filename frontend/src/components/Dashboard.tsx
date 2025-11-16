@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { DocumentFile, DocumentCategory } from '../types';
 import { formatRelativeTime } from '../utils/formatters';
 import { categoryInfoMap } from '../utils/category-info';
@@ -25,10 +25,10 @@ const CategoryTile: React.FC<{ category: DocumentCategory; count: number; onClic
     return (
         <button
             onClick={onClick}
-            className={`group relative text-left w-full h-full flex flex-col justify-between p-5 rounded-3xl shadow-sm transition-all duration-300 overflow-hidden border
+            className={`group relative text-left w-full h-full flex flex-col justify-between p-5 rounded-3xl shadow-sm transition-all duration-200 overflow-hidden border
             ${gradient}
             border-stone-200/80 dark:border-slate-800
-            hover:shadow-xl hover:scale-[1.03] hover:border-teal-400/80 dark:hover:border-teal-500/80`}
+            hover:shadow-md hover:border-teal-400/60 dark:hover:border-teal-500/60`}
         >
             <div>
                 <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${lightColor}`}>
@@ -49,7 +49,7 @@ const RecentDocumentItem: React.FC<{ document: DocumentFile, onSelect: (id: stri
         <li>
           <button
             onClick={() => onSelect(document.id)}
-            className="w-full text-left flex items-center justify-between p-3 -mx-3 rounded-2xl hover:bg-stone-100 dark:hover:bg-slate-800/60 transition-all duration-200 hover:scale-[1.01] hover:shadow-sm"
+            className="w-full text-left flex items-center justify-between p-3 -mx-3 rounded-2xl hover:bg-stone-100/60 dark:hover:bg-slate-800/40 transition-colors duration-150"
           >
             <div className="flex items-center min-w-0">
                 <div className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg mr-3 ${lightColor}`}>
@@ -68,7 +68,45 @@ const RecentDocumentItem: React.FC<{ document: DocumentFile, onSelect: (id: stri
 
 
 const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, onSelectDocument, isLoading = false }) => {
-    
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+    const handleDragEnter = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.types.includes('Files')) {
+            setIsDraggingOver(true);
+        }
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Only set to false if leaving the main container
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
+        if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+            setIsDraggingOver(false);
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+
+        // Trigger the global upload button
+        const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
+        if (uploadButton) {
+            uploadButton.click();
+        }
+    };
+
     const categoryStats = useMemo(() => {
         const stats: { [key in DocumentCategory]?: number } = {};
 
@@ -88,9 +126,26 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
         return [...documents].sort((a, b) => b.uploadDate.getTime() - a.uploadDate.getTime()).slice(0, 5);
     }, [documents]);
 
-  
+
     return (
-    <div className="h-full pt-28 pb-20">
+    <div
+        className="relative h-full pt-28 pb-20"
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+    >
+        {/* Drag Overlay */}
+        {isDraggingOver && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-teal-500/20 backdrop-blur-sm">
+                <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 shadow-2xl text-center border-4 border-dashed border-teal-500">
+                    <UploadIcon className="w-24 h-24 mx-auto mb-6 text-teal-600 dark:text-teal-400 animate-bounce" />
+                    <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">Drop files to upload</h2>
+                    <p className="text-slate-600 dark:text-slate-400">Release to open upload dialog</p>
+                </div>
+            </div>
+        )}
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             {isLoading ? (

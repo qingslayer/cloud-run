@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from './config/firebase';
 import { DocumentFile, ChatMessage as ChatMessageType, DocumentCategory, Theme, View, UniversalSearchResult, getDocumentProcessingStatus } from './types';
@@ -138,12 +138,58 @@ const App: React.FC = () => {
     }
   }, [theme]);
 
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC key - Close modals, panels, and detail views
+      if (e.key === 'Escape') {
+        if (isRightPanelOpen) {
+          setIsRightPanelOpen(false);
+        } else if (selectedDocumentId) {
+          handleCloseDocumentDetail();
+        }
+        return;
+      }
+
+      // Cmd/Ctrl + K - Focus search bar
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[type="text"][placeholder*="Search"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+        return;
+      }
+
+      // Cmd/Ctrl + U - Open upload (if not already focused in an input)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'u') {
+        const target = e.target as HTMLElement;
+        if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
+          if (uploadButton) {
+            uploadButton.click();
+          }
+        }
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isRightPanelOpen, selectedDocumentId]);
+
   const handleNavigateToRecords = (category: DocumentCategory) => {
     setRecordsFilter(category);
     setView('records');
   };
 
   const handleSetView = (newView: View) => {
+    // Close document detail view when switching views
+    if (selectedDocumentId) {
+      handleCloseDocumentDetail();
+    }
     setView(newView);
   };
 
@@ -323,6 +369,45 @@ const App: React.FC = () => {
     setSelectedDocumentData(null);
   };
 
+  // Get current document navigation context (memoized for performance)
+  const navigationContext = useMemo(() => {
+    // Get currently visible documents based on view and filter
+    let visibleDocs = documents.filter(doc => doc.status === 'complete');
+
+    if (view === 'records' && recordsFilter !== 'all') {
+      visibleDocs = visibleDocs.filter(doc => doc.category === recordsFilter);
+    }
+
+    // Sort by date desc (same as Records view default)
+    visibleDocs.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
+
+    const currentIndex = selectedDocumentId ? visibleDocs.findIndex(doc => doc.id === selectedDocumentId) : -1;
+
+    return {
+      allDocuments: visibleDocs,
+      currentIndex,
+      hasPrev: currentIndex > 0,
+      hasNext: currentIndex < visibleDocs.length - 1
+    };
+  }, [documents, view, recordsFilter, selectedDocumentId]);
+
+  const handleNavigateDocument = useCallback((direction: 'prev' | 'next') => {
+    const { allDocuments, currentIndex } = navigationContext;
+
+    if (currentIndex === -1) return;
+
+    let newIndex = currentIndex;
+    if (direction === 'prev' && currentIndex > 0) {
+      newIndex = currentIndex - 1;
+    } else if (direction === 'next' && currentIndex < allDocuments.length - 1) {
+      newIndex = currentIndex + 1;
+    }
+
+    if (newIndex !== currentIndex && allDocuments[newIndex]) {
+      handleSelectDocument(allDocuments[newIndex].id);
+    }
+  }, [navigationContext, handleSelectDocument]);
+
   const handleSendMessage = useCallback(async (message: string) => {
     if (!message.trim()) return;
 
@@ -357,6 +442,9 @@ const App: React.FC = () => {
 
   const handleSearchSubmit = async (query: string) => {
     if (!query.trim()) return;
+
+    // Close any open document detail view
+    handleCloseDocumentDetail();
 
     setChatMessages([]);
     setChatSessionId(null);
@@ -469,7 +557,7 @@ const App: React.FC = () => {
   }
 
   return (
-     <div className="font-sans h-screen overflow-hidden flex flex-col">
+     <div className="font-sans h-screen flex flex-col bg-white dark:bg-[#0B1120]">
         <TopCommandBar
           activeView={view}
           setView={handleSetView}
@@ -488,9 +576,29 @@ const App: React.FC = () => {
               onSelectDocument={handleSelectDocument}
             />
           }
+          onBack={selectedDocumentId ? handleCloseDocumentDetail : undefined}
+          navigationContext={selectedDocumentId ? {
+            currentIndex: navigationContext.currentIndex,
+            total: navigationContext.allDocuments.length,
+            hasPrev: navigationContext.hasPrev,
+            hasNext: navigationContext.hasNext
+          } : undefined}
+          onNavigate={selectedDocumentId ? handleNavigateDocument : undefined}
         />
-        <main className="flex-1 overflow-y-auto">
-          {renderMainContent()}
+
+        <main className={`flex-1 overflow-y-auto bg-stone-50 dark:bg-[#0B1120] transition-all duration-300 ${isRightPanelOpen ? 'pr-[25rem]' : ''}`}>
+          {selectedDocument ? (
+            <DocumentDetailView
+              documentData={selectedDocument}
+              onClose={handleCloseDocumentDetail}
+              onUpdate={handleUpdateDocument}
+              onDelete={handleRequestDeleteDocument}
+              navigationContext={navigationContext}
+              onNavigate={handleNavigateDocument}
+            />
+          ) : (
+            renderMainContent()
+          )}
         </main>
 
         <RightPanel
@@ -501,8 +609,10 @@ const App: React.FC = () => {
           isLoading={isLoading}
           hasDocuments={documents.length > 0}
         />
+      
+      // merge conflict
 
-        {selectedDocument && (
+<!--         {selectedDocument && (
             <DocumentDetailView
                 document={selectedDocument}
                 onClose={handleCloseDocumentDetail}
@@ -518,7 +628,7 @@ const App: React.FC = () => {
             onClose={() => setReviewModalDocument(null)}
           />
         )}
-
+ -->
        <ConfirmationModal
          isOpen={deleteConfirmation.isOpen}
          onClose={() => setDeleteConfirmation({ isOpen: false, type: 'single', isDeleting: false })}

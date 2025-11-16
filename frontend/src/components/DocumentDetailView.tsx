@@ -15,37 +15,68 @@ import { categoryInfoMap } from '../utils/category-info';
 import { ClipboardNotesIcon } from './icons/ClipboardNotesIcon';
 import { getDocumentDate } from '../utils/health-helpers';
 
+interface NavigationContext {
+  allDocuments: DocumentFile[];
+  currentIndex: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+}
+
 interface DocumentDetailViewProps {
-  document: DocumentFile;
+  documentData: DocumentFile;
   onClose: () => void;
   onUpdate?: (id: string, updates: Partial<DocumentFile>) => Promise<void>;
   onDelete?: (id: string) => void;
+  navigationContext?: NavigationContext;
+  onNavigate?: (direction: 'prev' | 'next') => void;
 }
 
 const categories: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
 
-const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClose, onUpdate, onDelete }) => {
+const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, onClose, onUpdate, onDelete, navigationContext, onNavigate }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  
+
   // State for all editable fields
-  const [editedDisplayName, setEditedDisplayName] = useState(document.displayName || '');
-  const [editedCategory, setEditedCategory] = useState(document.category);
-  const [editedNotes, setEditedNotes] = useState(document.notes || '');
-  const [editedStructuredData, setEditedStructuredData] = useState(document.aiAnalysis?.structuredData || {});
+  const [editedDisplayName, setEditedDisplayName] = useState(documentData.displayName || '');
+  const [editedCategory, setEditedCategory] = useState(documentData.category);
+  const [editedNotes, setEditedNotes] = useState(documentData.notes || '');
+  const [editedStructuredData, setEditedStructuredData] = useState(documentData.aiAnalysis?.structuredData || {});
 
   const [isSaving, setIsSaving] = useState(false);
-  const { color, lightColor } = categoryInfoMap[document.category];
+  const { color, lightColor } = categoryInfoMap[documentData.category];
 
-  // When the document prop changes (e.g., after a save), reset the state
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't navigate if user is typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' && navigationContext?.hasPrev && onNavigate) {
+        e.preventDefault();
+        onNavigate('prev');
+      } else if (e.key === 'ArrowRight' && navigationContext?.hasNext && onNavigate) {
+        e.preventDefault();
+        onNavigate('next');
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [navigationContext, onNavigate]);
+
+  // When the documentData prop changes (e.g., after a save), reset the state
   useEffect(() => {
     if (!isEditing) {
-      setEditedDisplayName(document.displayName || '');
-      setEditedCategory(document.category);
-      setEditedNotes(document.notes || '');
-      setEditedStructuredData(document.aiAnalysis?.structuredData || {});
+      setEditedDisplayName(documentData.displayName || '');
+      setEditedCategory(documentData.category);
+      setEditedNotes(documentData.notes || '');
+      setEditedStructuredData(documentData.aiAnalysis?.structuredData || {});
     }
-  }, [document, isEditing]);
+  }, [documentData, isEditing]);
 
 
   const handleStartEdit = () => {
@@ -53,11 +84,11 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
   };
 
   const handleCancelEdit = () => {
-    // Reset state to original document values
-    setEditedDisplayName(document.displayName || '');
-    setEditedCategory(document.category);
-    setEditedNotes(document.notes || '');
-    setEditedStructuredData(document.aiAnalysis?.structuredData || {});
+    // Reset state to original documentData values
+    setEditedDisplayName(documentData.displayName || '');
+    setEditedCategory(documentData.category);
+    setEditedNotes(documentData.notes || '');
+    setEditedStructuredData(documentData.aiAnalysis?.structuredData || {});
     setIsEditing(false);
   };
 
@@ -73,7 +104,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
         'aiAnalysis.structuredData': editedStructuredData,
       };
 
-      await onUpdate(document.id, updatePayload);
+      await onUpdate(documentData.id, updatePayload);
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to save document:', error);
@@ -85,71 +116,11 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
 
   return (
     <>
-    <div className="absolute inset-0 bg-stone-50 dark:bg-[#0B1120] z-50 flex flex-col p-4 overflow-hidden">
-      {/* Header */}
-      <header className="flex-shrink-0 flex items-center justify-between p-2 mb-4">
-        <button onClick={onClose} className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-stone-200/60 dark:hover:bg-slate-800/60 transition-colors">
-            <ArrowLeftIcon className="w-5 h-5" />
-            <span className="text-sm font-semibold">Back to Timeline</span>
-        </button>
-
-        {/* Edit Mode Toggle */}
-        {!isEditing && onUpdate && (
-          <button
-            onClick={handleStartEdit}
-            className="flex items-center space-x-2 px-4 py-2 rounded-lg text-white bg-teal-600 hover:bg-teal-700 transition-colors shadow-md"
-          >
-            <PencilIcon className="w-4 h-4" />
-            <span className="text-sm font-semibold">Edit Document</span>
-          </button>
-        )}
-
-        {/* Save/Cancel/Delete Buttons for Edit Mode */}
-        {isEditing && (
-          <div className="flex items-center justify-between w-full">
-            {/* Delete button on the left */}
-            {onDelete && (
-              <button
-                onClick={() => onDelete(document.id)}
-                disabled={isSaving}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
-              >
-                <TrashIcon className="w-4 h-4" />
-                <span className="text-sm font-semibold">Delete</span>
-              </button>
-            )}
-
-            {/* Save/Cancel buttons on the right */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleCancelEdit}
-                disabled={isSaving}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 bg-stone-200 dark:bg-slate-700 hover:bg-stone-300 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
-              >
-                <XIcon className="w-4 h-4" />
-                <span className="text-sm font-semibold">Cancel</span>
-              </button>
-              <button
-                onClick={handleSaveEdit}
-                disabled={isSaving}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors shadow-md disabled:opacity-50"
-              >
-                {isSaving ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                ) : (
-                  <CheckCircleIcon className="w-4 h-4" />
-                )}
-                <span className="text-sm font-semibold">{isSaving ? 'Saving...' : 'Save Changes'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </header>
-      
+    <div className="flex flex-col min-h-full bg-stone-50 dark:bg-[#0B1120]">
       {/* Main Content */}
-      <main className="flex-grow overflow-y-auto pr-2">
+      <main className="flex-grow p-6">
         <div className="max-w-4xl mx-auto">
-            {/* Page Title */}
+            {/* Page Title with Edit Controls */}
             <div className="mb-8">
               {isEditing ? (
                 <>
@@ -170,14 +141,66 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                     className="w-full bg-white dark:bg-slate-800/60 border border-stone-300 dark:border-slate-700 rounded-lg p-3 text-3xl font-bold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                     placeholder="Enter document title"
                   />
+
+                  {/* Save/Cancel/Delete Buttons */}
+                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-stone-200 dark:border-slate-800">
+                    {/* Delete button on the left */}
+                    {onDelete && (
+                      <button
+                        onClick={() => onDelete(documentData.id)}
+                        disabled={isSaving}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-lg text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                        <span className="text-sm font-semibold">Delete</span>
+                      </button>
+                    )}
+
+                    {/* Save/Cancel buttons on the right */}
+                    <div className="flex items-center space-x-2 ml-auto">
+                      <button
+                        onClick={handleCancelEdit}
+                        disabled={isSaving}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 bg-stone-200 dark:bg-slate-700 hover:bg-stone-300 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                      >
+                        <XIcon className="w-4 h-4" />
+                        <span className="text-sm font-semibold">Cancel</span>
+                      </button>
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={isSaving}
+                        className="flex items-center space-x-2 px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors shadow-md disabled:opacity-50"
+                      >
+                        {isSaving ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                        ) : (
+                          <CheckCircleIcon className="w-4 h-4" />
+                        )}
+                        <span className="text-sm font-semibold">{isSaving ? 'Saving...' : 'Save Changes'}</span>
+                      </button>
+                    </div>
+                  </div>
                 </>
               ) : (
-                <>
-                  <span className={`text-sm font-semibold px-3 py-1.5 rounded-lg ${lightColor} ${color}`}>
-                      {document.category}
-                  </span>
-                  <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mt-3">{document.displayName}</h1>
-                </>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <span className={`text-sm font-semibold px-3 py-1.5 rounded-lg ${lightColor} ${color}`}>
+                        {documentData.category}
+                    </span>
+                    <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mt-3">{documentData.displayName}</h1>
+                  </div>
+
+                  {/* Edit Button */}
+                  {onUpdate && (
+                    <button
+                      onClick={handleStartEdit}
+                      className="flex-shrink-0 flex items-center space-x-2 px-4 py-2 rounded-lg text-white bg-teal-600 hover:bg-teal-700 transition-colors shadow-md"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                      <span className="text-sm font-semibold">Edit</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
             
@@ -189,13 +212,13 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                         <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">Document Details</h2>
                         <div className="space-y-4 text-sm">
                             {/* Document Date (if extracted) */}
-                            {getDocumentDate(document) && (
+                            {getDocumentDate(documentData) && (
                               <div className="flex items-start">
                                   <CalendarIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mt-0.5 mr-3 flex-shrink-0" />
                                   <div>
                                       <p className="font-semibold text-slate-700 dark:text-slate-300">Document Date</p>
                                       <p className="text-slate-500 dark:text-slate-400">
-                                        {getDocumentDate(document)!.toLocaleDateString()} ({formatRelativeTime(getDocumentDate(document)!)})
+                                        {getDocumentDate(documentData)!.toLocaleDateString()} ({formatRelativeTime(getDocumentDate(documentData)!)})
                                       </p>
                                   </div>
                               </div>
@@ -206,10 +229,10 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                                 <CalendarIcon className="w-5 h-5 text-slate-500 dark:text-slate-400 mt-0.5 mr-3 flex-shrink-0" />
                                 <div>
                                     <p className="font-semibold text-slate-700 dark:text-slate-300">
-                                      {getDocumentDate(document) ? 'Uploaded' : 'Upload Date'}
+                                      {getDocumentDate(documentData) ? 'Uploaded' : 'Upload Date'}
                                     </p>
                                     <p className="text-slate-500 dark:text-slate-400">
-                                      {new Date(document.uploadDate).toLocaleDateString()} ({formatRelativeTime(new Date(document.uploadDate))})
+                                      {new Date(documentData.uploadDate).toLocaleDateString()} ({formatRelativeTime(new Date(documentData.uploadDate))})
                                     </p>
                                 </div>
                             </div>
@@ -230,13 +253,13 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                               >
                                   {/* Small thumbnail/icon */}
                                   <div className="flex-shrink-0 w-12 h-16 rounded overflow-hidden border border-slate-200 dark:border-slate-700">
-                                      {document.downloadUrl ? (
-                                          document.filename.endsWith('.pdf') ? (
+                                      {documentData.downloadUrl ? (
+                                          documentData.filename.endsWith('.pdf') ? (
                                               <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
                                                   <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">PDF</span>
                                               </div>
                                           ) : (
-                                              <img src={document.downloadUrl} alt={document.filename} className="w-full h-full object-cover" />
+                                              <img src={documentData.downloadUrl} alt={documentData.filename} className="w-full h-full object-cover" />
                                           )
                                       ) : (
                                           <div className="w-full h-full bg-slate-100 dark:bg-slate-800" />
@@ -245,7 +268,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
 
                                   {/* File info */}
                                   <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{document.filename}</p>
+                                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{documentData.filename}</p>
                                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Click to view full document</p>
                                   </div>
 
@@ -271,7 +294,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                                 />
                               </>
                             ) : (
-                              <StructuredDataDisplay data={document.aiAnalysis?.structuredData} category={document.category as DocumentCategory} />
+                              <StructuredDataDisplay data={documentData.aiAnalysis?.structuredData} category={documentData.category as DocumentCategory} />
                             )}
                         </div>
                     </div>
@@ -288,7 +311,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                                     onClick={handleStartEdit}
                                     className="text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium"
                                 >
-                                    {document.notes ? 'Edit' : 'Add notes'}
+                                    {documentData.notes ? 'Edit' : 'Add notes'}
                                 </button>
                             )}
                         </div>
@@ -299,8 +322,8 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
                                 placeholder="Add any additional notes or comments about this document..."
                                 className="w-full bg-white dark:bg-slate-700/50 border border-slate-300 dark:border-slate-600 rounded-md p-3 text-base text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 focus:outline-none resize-y min-h-[120px]"
                             />
-                        ) : document.notes ? (
-                            <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{document.notes}</p>
+                        ) : documentData.notes ? (
+                            <p className="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{documentData.notes}</p>
                         ) : (
                             <p className="text-slate-400 dark:text-slate-500 text-sm italic">No notes added yet. Click "Add notes" to get started.</p>
                         )}
@@ -310,7 +333,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ document, onClo
         </div>
       </main>
     </div>
-    {isModalOpen && <DocumentPreviewModal document={document} onClose={() => setIsModalOpen(false)} />}
+    {isModalOpen && <DocumentPreviewModal document={documentData} onClose={() => setIsModalOpen(false)} />}
     </>
   );
 };

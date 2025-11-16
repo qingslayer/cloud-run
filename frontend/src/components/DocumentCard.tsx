@@ -1,5 +1,5 @@
 import React from 'react';
-import { DocumentFile } from '../types';
+import { DocumentFile, getDocumentProcessingStatus } from '../types';
 import { DownloadIcon } from './icons/DownloadIcon';
 import { TrashIcon } from './icons/TrashIcon';
 import { PencilIcon } from './icons/PencilIcon';
@@ -23,8 +23,9 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
   }
 
   const { icon: CategoryIcon, color, lightColor } = categoryInfo || categoryInfoMap['Other'];
-  const hasAiAnalysis = !!document.aiAnalysis;
-  const isProcessing = !hasAiAnalysis; // Processing if no AI analysis yet
+  const processingStatus = getDocumentProcessingStatus(document);
+  const isProcessing = processingStatus === 'processing';
+  const isPendingReview = processingStatus === 'pending_review';
   const snippet = generateSnippet(document);
 
   // Check if document is new (uploaded within last 24 hours) AND not yet viewed
@@ -68,8 +69,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
         </div>
 
         <div className="flex-grow min-w-0">
-          <p className="text-base font-bold text-slate-800 dark:text-slate-100 truncate" title={document.displayName}>
-            {document.displayName}
+          <p className="text-base font-bold text-slate-800 dark:text-slate-100 truncate" title={document.displayName || document.filename}>
+            {document.displayName || document.filename}
           </p>
           <div className="flex items-center space-x-2 mt-0.5">
             <div className="flex space-x-1">
@@ -78,7 +79,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
               <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse animation-delay-400" />
             </div>
             <span className="text-sm text-amber-600 dark:text-amber-400">
-              Analyzing...
+              AI analyzing...
             </span>
           </div>
         </div>
@@ -105,7 +106,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, onRemove, onView,
       <div className="flex-grow min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-base font-bold text-slate-800 dark:text-slate-100 truncate" title={document.displayName}>{document.displayName}</p>
-          {isNew && (
+          {isPendingReview && (
+            <span className="flex-shrink-0 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/50 rounded-full">
+              REVIEW
+            </span>
+          )}
+          {!isPendingReview && isNew && (
             <span className="flex-shrink-0 px-2 py-0.5 text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-100 dark:bg-teal-900/50 rounded-full">
               NEW
             </span>

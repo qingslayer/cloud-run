@@ -63,6 +63,16 @@ const EditableStructuredData: React.FC<EditableStructuredDataProps> = ({ data, s
     // Special handling for Lab Results with complex data
     const hasComplexData = complexFields.length > 0;
 
+    // Helper to determine if a field should use textarea
+    const shouldUseTextarea = (key: string, value: any): boolean => {
+        const stringValue = String(value);
+        // Field names that typically contain long text
+        const longTextFieldNames = ['findings', 'impression', 'instructions', 'notes', 'description', 'details', 'procedure', 'summary', 'comments'];
+        const isLongTextField = longTextFieldNames.some(name => key.toLowerCase().includes(name));
+        // Use textarea if field name suggests long text OR value is longer than 50 characters
+        return isLongTextField || stringValue.length > 50;
+    };
+
     return (
         <div className="space-y-4">
             {hasComplexData && (
@@ -77,15 +87,43 @@ const EditableStructuredData: React.FC<EditableStructuredDataProps> = ({ data, s
             )}
 
             {editableFields.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-4">
                     <h4 className="text-sm font-semibold text-slate-600 dark:text-slate-400">Editable Fields</h4>
-                    {editableFields.map(([key, value]) => (
-                        <div key={key} className="flex items-center gap-2">
-                            <InputField placeholder="Key" value={key} onChange={(e) => handleChange(key, e.target.value, value)} />
-                            <InputField placeholder="Value" value={String(value)} onChange={(e) => handleValueChange(key, e.target.value)} />
-                            <button onClick={() => deleteRow(key)} className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-md"><TrashIcon className="w-5 h-5"/></button>
-                        </div>
-                    ))}
+                    {editableFields.map(([key, value]) => {
+                        const useTextarea = shouldUseTextarea(key, value);
+
+                        return (
+                            <div key={key} className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <InputField
+                                        placeholder="Field Name"
+                                        value={key}
+                                        onChange={(e) => handleChange(key, e.target.value, value)}
+                                        className="flex-1"
+                                    />
+                                    <button
+                                        onClick={() => deleteRow(key)}
+                                        className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-md flex-shrink-0"
+                                    >
+                                        <TrashIcon className="w-5 h-5"/>
+                                    </button>
+                                </div>
+                                {useTextarea ? (
+                                    <TextAreaField
+                                        placeholder="Value"
+                                        value={String(value)}
+                                        onChange={(e) => handleValueChange(key, e.target.value)}
+                                    />
+                                ) : (
+                                    <InputField
+                                        placeholder="Value"
+                                        value={String(value)}
+                                        onChange={(e) => handleValueChange(key, e.target.value)}
+                                    />
+                                )}
+                            </div>
+                        );
+                    })}
                     <button onClick={addRow} className="flex items-center space-x-2 px-3 py-1 rounded-lg text-sm font-semibold text-sky-600 dark:text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 transition-colors">
                         <PlusIcon className="w-4 h-4" />
                         <span>Add Detail</span>

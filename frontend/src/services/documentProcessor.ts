@@ -10,6 +10,7 @@ import { DocumentFile } from '../types';
 const parseDocumentDates = (doc: any): DocumentFile => ({
   ...doc,
   uploadDate: new Date(doc.uploadDate),
+  reviewedAt: doc.reviewedAt ? new Date(doc.reviewedAt) : undefined,
   aiAnalysis: doc.aiAnalysis ? {
     ...doc.aiAnalysis,
   } : undefined,

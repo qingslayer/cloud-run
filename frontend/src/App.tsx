@@ -83,42 +83,41 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!currentUser) return;
 
-    // Find documents without aiAnalysis (still processing)
-    const processingDocs = documents.filter(doc => !doc.aiAnalysis);
-
-    if (processingDocs.length === 0) return;
-
-    console.log(`Polling for ${processingDocs.length} processing document(s)...`);
-
-    // Poll every 3 seconds for processing documents
-    const interval = setInterval(async () => {
+    const pollForUpdates = async () => {
       try {
         const { documents: freshDocs } = await getDocuments();
 
-        // Update documents in state, preserving order
         setDocuments(prevDocs => {
+          // Check if there are any processing documents
+          const hasProcessing = prevDocs.some(doc => !doc.aiAnalysis);
+
+          // If no processing documents, don't update
+          if (!hasProcessing) return prevDocs;
+
+          // Update documents that have changed
+          let hasChanges = false;
           const updatedDocs = prevDocs.map(doc => {
             const fresh = freshDocs.find(f => f.id === doc.id);
+            if (fresh && !doc.aiAnalysis && fresh.aiAnalysis) {
+              hasChanges = true;
+              console.log(`✅ AI analysis completed for: ${fresh.displayName || fresh.filename}`);
+            }
             return fresh || doc;
           });
 
-          // Check if any document just completed processing
-          prevDocs.forEach(oldDoc => {
-            const newDoc = updatedDocs.find(d => d.id === oldDoc.id);
-            if (oldDoc && !oldDoc.aiAnalysis && newDoc?.aiAnalysis) {
-              console.log(`✅ AI analysis completed for: ${newDoc.displayName || newDoc.filename}`);
-            }
-          });
-
-          return updatedDocs;
+          // Only update state if something actually changed
+          return hasChanges ? updatedDocs : prevDocs;
         });
       } catch (err) {
         console.error('Error polling for document updates:', err);
       }
-    }, 3000);
+    };
+
+    // Poll every 5 seconds
+    const interval = setInterval(pollForUpdates, 5000);
 
     return () => clearInterval(interval);
-  }, [currentUser, documents]);
+  }, [currentUser]); // Only depend on currentUser, not documents
 
 
   useEffect(() => {

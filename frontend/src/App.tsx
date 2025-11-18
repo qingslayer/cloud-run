@@ -22,6 +22,8 @@ import { useToast } from './hooks/useToast';
 import { useOnboarding } from './hooks/useOnboarding';
 import WelcomeModal from './components/WelcomeModal';
 import OnboardingTooltip from './components/OnboardingTooltip';
+import { TIMEOUTS, STORAGE_KEYS } from './config/constants';
+import { MESSAGES } from './config/messages';
 
 const App: React.FC = () => {
   const { toasts, removeToast, success, error, warning, info } = useToast();
@@ -36,12 +38,12 @@ const App: React.FC = () => {
   const [selectedDocumentData, setSelectedDocumentData] = useState<DocumentFile | null>(null);
   const [selectedDocumentEditMode, setSelectedDocumentEditMode] = useState(false);
   const isLoadingDocumentRef = useRef(false);
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('theme') as Theme) || 'system');
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem(STORAGE_KEYS.THEME) as Theme) || 'system');
   const [recordsFilter, setRecordsFilter] = useState<DocumentCategory | 'all'>('all');
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [viewedDocuments, setViewedDocuments] = useState<Set<string>>(() => {
     // Load viewed documents from localStorage
-    const stored = localStorage.getItem('viewedDocuments');
+    const stored = localStorage.getItem(STORAGE_KEYS.VIEWED_DOCS);
     return stored ? new Set(JSON.parse(stored)) : new Set();
   });
 
@@ -79,7 +81,7 @@ const App: React.FC = () => {
           setIsDocumentsLoading(false);
         }).catch((err) => {
           console.error("Error loading documents:", err);
-          error("Failed to load your documents. Please refresh the page.");
+          error(MESSAGES.ERRORS.LOAD_DOCUMENTS);
           setIsDocumentsLoading(false);
         });
       }
@@ -100,7 +102,7 @@ const App: React.FC = () => {
       // Small delay to ensure documents state has fully updated
       const timer = setTimeout(() => {
         setInitialFetchComplete(true);
-      }, 100);
+      }, TIMEOUTS.INITIAL_FETCH);
       return () => clearTimeout(timer);
     }
   }, [currentUser, isDocumentsLoading, initialFetchComplete]);
@@ -133,7 +135,6 @@ const App: React.FC = () => {
             const fresh = freshDocs.find(f => f.id === doc.id);
             if (fresh && !doc.aiAnalysis && fresh.aiAnalysis) {
               hasChanges = true;
-              console.log(`✅ AI analysis completed for: ${fresh.displayName || fresh.filename}`);
             }
             return fresh || doc;
           });
@@ -147,7 +148,7 @@ const App: React.FC = () => {
     };
 
     // Poll every 5 seconds
-    const interval = setInterval(pollForUpdates, 5000);
+    const interval = setInterval(pollForUpdates, TIMEOUTS.POLL_INTERVAL);
 
     return () => clearInterval(interval);
   }, [currentUser]); // Only depend on currentUser, not documents
@@ -162,7 +163,7 @@ const App: React.FC = () => {
     };
 
     applyTheme();
-    localStorage.setItem('theme', theme);
+    localStorage.setItem(STORAGE_KEYS.THEME, theme);
 
     if (theme === 'system') {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -240,11 +241,11 @@ const App: React.FC = () => {
     try {
       await Promise.all(documents.map(doc => apiDeleteDocument(doc.id)));
       setDocuments([]);
-      success("All records deleted successfully");
+      success(MESSAGES.SUCCESS.ALL_DELETED);
       setDeleteConfirmation({ isOpen: false, type: 'all', isDeleting: false });
     } catch (err) {
       console.error("Error deleting all records:", err);
-      error("Failed to delete some records. Please try again.");
+      error(MESSAGES.ERRORS.DELETE_DOCUMENT);
       setDeleteConfirmation(prev => ({ ...prev, isDeleting: false }));
     }
   };
@@ -274,7 +275,7 @@ const App: React.FC = () => {
 
     } catch (err) {
       console.error("Error updating document:", err);
-      error("Failed to update document. Please try again.");
+      error(MESSAGES.ERRORS.UPDATE_DOCUMENT);
     }
   }, [selectedDocumentId, error]);
 
@@ -299,7 +300,7 @@ const App: React.FC = () => {
 
     } catch (err) {
       console.error("Error approving document:", err);
-      error("Failed to save reviewed document. Please try again.");
+      error(MESSAGES.ERRORS.SAVE_REVIEWED);
       throw err; // Re-throw so ReviewModal can handle it
     }
   }, [reviewModalDocument, error, onboardingState.hasReviewedFirstDocument, markComplete]);
@@ -321,7 +322,7 @@ const App: React.FC = () => {
 
     } catch (err) {
       console.error("Error saving review changes:", err);
-      error("Failed to save changes. Please try again.");
+      error(MESSAGES.ERRORS.SAVE_CHANGES);
       throw err; // Re-throw so ReviewModal can handle it
     }
   }, [reviewModalDocument, error]);
@@ -349,11 +350,11 @@ const App: React.FC = () => {
         handleCloseDocumentDetail();
       }
 
-      success("Document deleted successfully");
+      success(MESSAGES.SUCCESS.DOCUMENT_DELETED);
       setDeleteConfirmation({ isOpen: false, type: 'single', isDeleting: false });
     } catch (err) {
       console.error("Error deleting document:", err);
-      error("Failed to delete document. Please try again.");
+      error(MESSAGES.ERRORS.DELETE_DOCUMENT);
       setDeleteConfirmation(prev => ({ ...prev, isDeleting: false }));
     }
   };
@@ -411,14 +412,14 @@ const App: React.FC = () => {
         setViewedDocuments(prev => {
           const newSet = new Set(prev);
           newSet.add(id);
-          localStorage.setItem('viewedDocuments', JSON.stringify(Array.from(newSet)));
+          localStorage.setItem(STORAGE_KEYS.VIEWED_DOCS, JSON.stringify(Array.from(newSet)));
           return newSet;
         });
       }
 
     } catch (err) {
       console.error("Error fetching document details:", err);
-      error("Failed to load document. Please try again.");
+      error(MESSAGES.ERRORS.LOAD_DOCUMENT);
       selectedDocumentDataRef.current = null;
       lastSelectedDocumentIdRef.current = null;
     } finally {
@@ -535,7 +536,7 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error("Search failed:", err);
-      error("Search failed. Please try again.");
+      error(MESSAGES.ERRORS.SEARCH_FAILED);
       setPageSearchResults({
         type: 'answer',
         answer: 'Sorry, an error occurred during the search.',
@@ -585,7 +586,7 @@ const App: React.FC = () => {
       setSelectedDocumentId(null);
     } catch (err) {
       console.error('Error signing out:', err);
-      error("Failed to sign out. Please try again.");
+      error(MESSAGES.ERRORS.SIGN_OUT_FAILED);
     }
   };
 
@@ -593,12 +594,12 @@ const App: React.FC = () => {
 
   // Show loading state during initial auth check
   if (isAuthLoading) {
-    return <LoadingState message="Loading..." fullScreen />;
+    return <LoadingState message={MESSAGES.LOADING.DEFAULT} fullScreen />;
   }
 
   // Show loading state during initial document fetch (prevents flash of empty state)
   if (currentUser && isDocumentsLoading && !initialFetchComplete) {
-    return <LoadingState message="Loading your health records..." fullScreen />;
+    return <LoadingState message={MESSAGES.LOADING.HEALTH_RECORDS} fullScreen />;
   }
 
   if (!currentUser) {

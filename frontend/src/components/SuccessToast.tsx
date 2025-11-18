@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { XIcon } from './icons/XIcon';
+import { TIMEOUTS } from '../config/constants';
 
 interface SuccessToastProps {
   show: boolean;
@@ -9,7 +10,7 @@ interface SuccessToastProps {
   duration?: number;
 }
 
-const SuccessToast: React.FC<SuccessToastProps> = ({ show, onClose, message, duration = 3000 }) => {
+const SuccessToast: React.FC<SuccessToastProps> = ({ show, onClose, message, duration = TIMEOUTS.SUCCESS_TOAST }) => {
   useEffect(() => {
     if (show) {
       const timer = setTimeout(() => {

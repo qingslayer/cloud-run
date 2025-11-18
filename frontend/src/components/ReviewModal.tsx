@@ -5,6 +5,7 @@ import { XIcon } from './icons/XIcon';
 import { PencilIcon } from './icons/PencilIcon';
 import EditableStructuredData from './EditableStructuredData';
 import { categoryInfoMap } from '../utils/category-info';
+import { CATEGORIES } from '../config/constants';
 
 interface ReviewModalProps {
   document: DocumentFile;
@@ -12,15 +13,6 @@ interface ReviewModalProps {
   onReviewLater: (updates: Partial<DocumentFile>) => Promise<void>;
   onClose: () => void;
 }
-
-const categories: DocumentCategory[] = [
-  'Lab Results',
-  'Prescriptions',
-  'Imaging Reports',
-  "Doctor's Notes",
-  'Vaccination Records',
-  'Other'
-];
 
 const ReviewModal: React.FC<ReviewModalProps> = ({ document, onApprove, onReviewLater, onClose }) => {
   const [editedDisplayName, setEditedDisplayName] = useState(document.displayName || document.filename);
@@ -169,7 +161,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({ document, onApprove, onReview
                     onChange={(e) => setEditedCategory(e.target.value as DocumentCategory)}
                     className={`w-full bg-white dark:bg-slate-800 border border-stone-300 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none ${lightColor} ${color}`}
                   >
-                    {categories.map((cat) => (
+                    {CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
                       </option>

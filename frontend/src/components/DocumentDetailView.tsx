@@ -15,6 +15,7 @@ import { CalendarIcon } from './icons/CalendarIcon';
 import { categoryInfoMap } from '../utils/category-info';
 import { ClipboardNotesIcon } from './icons/ClipboardNotesIcon';
 import { getDocumentDate } from '../utils/health-helpers';
+import { CATEGORIES } from '../config/constants';
 
 interface NavigationContext {
   allDocuments: DocumentFile[];
@@ -32,8 +33,6 @@ interface DocumentDetailViewProps {
   onNavigate?: (direction: 'prev' | 'next') => void;
   initialEditMode?: boolean;  // Start in edit mode if true
 }
-
-const categories: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
 
 const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, onClose, onUpdate, onDelete, navigationContext, onNavigate, initialEditMode = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -176,7 +175,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
                     onChange={e => setEditedCategory(e.target.value as DocumentCategory)}
                     className="mb-3 bg-white dark:bg-slate-800/60 border border-stone-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   >
-                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
 
                   <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2 block mt-4">Document Title</label>

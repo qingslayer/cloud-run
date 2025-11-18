@@ -72,8 +72,6 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({
 
         // FIX: Check if AI analysis has completed (not just status)
         if (doc?.aiAnalysis) {
-          console.log(`✅ Document ready for review: ${doc.displayName || doc.filename}`);
-
           setUploadProgress(prev => prev.map(p =>
             p.documentId === progress.documentId
               ? { ...p, status: 'complete' }

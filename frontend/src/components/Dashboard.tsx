@@ -7,6 +7,7 @@ import { UploadIcon } from './icons/UploadIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { ClockIcon } from './icons/ClockIcon';
 import LoadingSpinner from './LoadingSpinner';
+import { CATEGORIES } from '../config/constants';
 
 
 interface DashboardProps {
@@ -15,8 +16,6 @@ interface DashboardProps {
   onSelectDocument: (id: string) => void;
   isLoading?: boolean;
 }
-
-const ALL_CATEGORIES: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
 
 const CategoryTile: React.FC<{ category: DocumentCategory; count: number; onClick: () => void }> = ({ category, count, onClick }) => {
     const { icon: Icon, color, lightColor, gradient } = categoryInfoMap[category];
@@ -67,44 +66,6 @@ const RecentDocumentItem: React.FC<{ document: DocumentFile, onSelect: (id: stri
 
 
 const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, onSelectDocument, isLoading = false }) => {
-    const [isDraggingOver, setIsDraggingOver] = useState(false);
-
-    const handleDragEnter = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.dataTransfer.types.includes('Files')) {
-            setIsDraggingOver(true);
-        }
-    };
-
-    const handleDragLeave = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Only set to false if leaving the main container
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX;
-        const y = e.clientY;
-        if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
-            setIsDraggingOver(false);
-        }
-    };
-
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-    };
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsDraggingOver(false);
-
-        // Trigger the global upload button
-        const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
-        if (uploadButton) {
-            uploadButton.click();
-        }
-    };
 
     const categoryStats = useMemo(() => {
         const stats: { [key in DocumentCategory]?: number } = {};
@@ -118,7 +79,7 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
         });
 
         // Initialize all categories with 0 if not present
-        ALL_CATEGORIES.forEach(cat => {
+        CATEGORIES.forEach(cat => {
             if (!stats[cat]) stats[cat] = 0;
         });
 
@@ -133,24 +94,7 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
 
 
     return (
-    <div
-        className="relative h-full pt-28 pb-20"
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-    >
-        {/* Drag Overlay */}
-        {isDraggingOver && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-teal-500/20 backdrop-blur-sm">
-                <div className="bg-white dark:bg-slate-800 rounded-3xl p-12 shadow-2xl text-center border-4 border-dashed border-teal-500">
-                    <UploadIcon className="w-24 h-24 mx-auto mb-6 text-teal-600 dark:text-teal-400 animate-bounce" />
-                    <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-200 mb-2">Drop files to upload</h2>
-                    <p className="text-slate-600 dark:text-slate-400">Release to open upload dialog</p>
-                </div>
-            </div>
-        )}
-
+    <div className="relative h-full pt-28 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             {isLoading ? (
@@ -163,7 +107,7 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onNavigateToRecords, o
                     <section>
                         <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-4">Browse by Category</h2>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                            {ALL_CATEGORIES.map(category => (
+                            {CATEGORIES.map(category => (
                                 <CategoryTile
                                     key={category}
                                     category={category}

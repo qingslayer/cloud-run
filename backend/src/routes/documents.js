@@ -1,31 +1,28 @@
 import express from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
-import { Storage } from '@google-cloud/storage';
+import { FieldValue } from '@google-cloud/firestore';
+import { firestore } from '../config/firestore.js';
+import { storage } from '../config/storage.js';
+import { FILE_LIMITS, QUERY_LIMITS, TIME_DURATIONS, FUZZY_SEARCH_CONFIG, ERROR_MESSAGES } from '../config/constants.js';
+import { sendBadRequest, sendForbidden, sendNotFound, sendServerError, sendSuccess } from '../utils/responses.js';
+import { getOwnedDocument } from '../utils/documentAuth.js';
 import { getAIChatResponse } from '../services/gemini/chatService.js';
 import { getAISummary, getAIAnswer } from '../services/gemini/searchService.js';
-import { extractTextFromDocument, analyzeAndCategorizeDocument, extractStructuredData, generateSearchSummary } from '../services/gemini/documentProcessor.js';
-import { Firestore, FieldValue } from '@google-cloud/firestore';
+import { analyzeDocument } from '../services/gemini/documentAnalyzer.js';
 import { analyzeQuery, generateSimilaritySuggestions } from '../services/queryAnalyzer.js';
 import sessionCache from '../services/sessionCache.js';
 import { getCachedResults, setCachedResults, invalidateUserCache } from '../services/searchCache.js';
 import { rankDocuments } from '../services/searchRanking.js';
 import Fuse from 'fuse.js';
 
-
 const router = express.Router();
-
-// Initialize Google Cloud clients with explicit projectId to use Application Default Credentials
-// This prevents them from trying to load GOOGLE_APPLICATION_CREDENTIALS file path
-const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'helpful-beach-476908-p3';
-const storage = new Storage({ projectId });
-const firestore = new Firestore({ projectId });
 
 // Configure multer for file uploads (store in memory)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: FILE_LIMITS.MAX_FILE_SIZE,
   },
 });
 

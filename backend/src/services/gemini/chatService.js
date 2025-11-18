@@ -1,24 +1,8 @@
 import { ai, model } from './client.js';
+import { buildDocumentContext } from './utils/aiContext.js';
 
 function createSystemInstruction(documents) {
-  const documentContext = documents
-    .map(doc => {
-      const a = doc.aiAnalysis || {};
-
-      // Build structured data string (for precise lookups)
-      const structuredDataStr = a.structuredData && Object.keys(a.structuredData).length > 0
-        ? Object.entries(a.structuredData)
-            .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
-            .join('\n')
-        : null;
-
-      // Build context from searchSummary (overview) + structuredData (precision)
-      return `--- DOCUMENT: ${doc.displayName || doc.filename} ---
-Summary: ${a.searchSummary || 'No summary available'}
-${structuredDataStr ? '\nDetailed Values:\n' + structuredDataStr : ''}
---- END DOCUMENT ---`;
-    })
-    .join('\n\n');
+  const documentContext = buildDocumentContext(documents);
 
   return `You are a health records assistant helping users review their uploaded medical documents.
 

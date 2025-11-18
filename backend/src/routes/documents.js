@@ -55,7 +55,7 @@ function computeSearchableText(doc) {
 router.get('/', async (req, res) => {
   try {
     const { uid } = req.user; // UID from authenticated user
-    const { category, limit = 50, offset = 0 } = req.query;
+    const { category, limit = QUERY_LIMITS.DEFAULT_LIST, offset = 0 } = req.query;
 
     // Build the base query
     let query = firestore.collection('documents').where('userId', '==', uid);
@@ -357,29 +357,17 @@ router.get('/:id', async (req, res) => {
     const { uid } = req.user;
     const { id } = req.params;
 
-    // 1. Fetch document from Firestore
-    const docRef = firestore.collection('documents').doc(id);
-    const doc = await docRef.get();
+    // 1. Fetch document and verify ownership
+    const { documentData } = await getOwnedDocument(id, uid);
 
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    const documentData = doc.data();
-
-    // 2. Verify user has access
-    if (documentData.userId !== uid) {
-      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
-    }
-
-    // 3. Generate signed URL for download
+    // 2. Generate signed URL for download
     const bucketName = process.env.STORAGE_BUCKET;
     const fileName = documentData.storagePath;
 
     const options = {
       version: 'v4',
       action: 'read',
-      expires: Date.now() + 60 * 60 * 1000, // 1 hour
+      expires: Date.now() + TIME_DURATIONS.SIGNED_URL_EXPIRY,
     };
 
     const [downloadUrl] = await storage
@@ -394,11 +382,15 @@ router.get('/:id', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching document:', error);
-    res.status(500).json({
-      error: 'Failed to fetch document',
-      message: error.message
-    });
+    // Handle errors from getOwnedDocument (404 or 403)
+    if (error.status === 404) {
+      return sendNotFound(res, error.message);
+    }
+    if (error.status === 403) {
+      return sendForbidden(res, error.message);
+    }
+    // Handle other errors
+    return sendServerError(res, error, ERROR_MESSAGES.DOCUMENT_FETCH_FAILED);
   }
 });
 
@@ -553,22 +545,10 @@ router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 1. Fetch document from Firestore
-    const docRef = firestore.collection('documents').doc(id);
-    const doc = await docRef.get();
+    // 1. Fetch document and verify ownership
+    const { docRef, documentData } = await getOwnedDocument(id, uid);
 
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    const documentData = doc.data();
-
-    // 2. Verify user has access
-    if (documentData.userId !== uid) {
-      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
-    }
-
-    // 3. Delete file from Cloud Storage
+    // 2. Delete file from Cloud Storage
     const bucketName = process.env.STORAGE_BUCKET;
     const fileName = documentData.storagePath;
     const file = storage.bucket(bucketName).file(fileName);

@@ -603,22 +603,10 @@ router.patch('/:id', async (req, res) => {
   const updates = req.body;
 
   try {
-    // 1. Fetch document from Firestore
-    const docRef = firestore.collection('documents').doc(id);
-    const doc = await docRef.get();
+    // 1. Fetch document and verify ownership
+    const { docRef, documentData } = await getOwnedDocument(id, uid);
 
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    const documentData = doc.data();
-
-    // 2. Verify user has access
-    if (documentData.userId !== uid) {
-      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
-    }
-
-    // 3. Validate request body
+    // 2. Validate request body
     const immutableFields = ['id', 'userId', 'filename', 'fileType', 'size', 'storagePath', 'uploadDate'];
     for (const field of immutableFields) {
       if (updates.hasOwnProperty(field)) {
@@ -718,44 +706,22 @@ router.post('/:id/analyze', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 1. Fetch document from Firestore and verify ownership
-    const docRef = firestore.collection('documents').doc(id);
-    const doc = await docRef.get();
-
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    const documentData = doc.data();
-
-    if (documentData.userId !== uid) {
-      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
-    }
+    // 1. Fetch document and verify ownership
+    const { docRef, documentData } = await getOwnedDocument(id, uid);
 
     // 2. Download file from Cloud Storage
     const fileBuffer = await storage.bucket(process.env.STORAGE_BUCKET).file(documentData.storagePath).download();
     const base64Data = fileBuffer[0].toString('base64');
 
-    // 3. Analyze with Gemini (using existing services)
+    // 3. Analyze with Gemini using unified pipeline
     let analysisResults;
     try {
-      const extractedText = await extractTextFromDocument(base64Data, documentData.fileType);
-      const categorization = await analyzeAndCategorizeDocument(extractedText);
-      const structuredData = await extractStructuredData(extractedText, categorization.category);
-      const searchSummary = await generateSearchSummary(extractedText, categorization.category, structuredData);
-
+      const analysis = await analyzeDocument(base64Data, documentData.fileType);
       analysisResults = {
-        displayName: categorization.title,
-        category: categorization.category,
-        aiAnalysis: {
-          category: categorization.category,
-          structuredData: structuredData,
-          searchSummary: searchSummary,  // Concise summary for efficient AI search
-        },
+        ...analysis,
         status: 'complete', // Mark as complete after successful analysis
         analyzedAt: FieldValue.serverTimestamp(),
       };
-
     } catch (aiError) {
       console.error(`AI processing failed for document ${id}:`, aiError);
       const userMessage = 'Unable to analyze document. The AI model could not process the file.';

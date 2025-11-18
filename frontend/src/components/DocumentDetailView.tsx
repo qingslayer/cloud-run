@@ -16,6 +16,7 @@ import { categoryInfoMap } from '../utils/category-info';
 import { ClipboardNotesIcon } from './icons/ClipboardNotesIcon';
 import { getDocumentDate } from '../utils/health-helpers';
 import { CATEGORIES } from '../config/constants';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 interface NavigationContext {
   allDocuments: DocumentFile[];
@@ -51,21 +52,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
   const { color, lightColor } = categoryInfoMap[documentData.category];
 
   // Close menu on outside click
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    };
-
-    if (isMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isMenuOpen]);
+  useClickOutside(menuRef, () => setIsMenuOpen(false), isMenuOpen);
 
   // Keyboard navigation
   useEffect(() => {

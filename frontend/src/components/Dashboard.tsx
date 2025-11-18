@@ -19,13 +19,51 @@ interface DashboardProps {
 
 const CategoryTile: React.FC<{ category: DocumentCategory; count: number; onClick: () => void }> = ({ category, count, onClick }) => {
     const { icon: Icon, color, lightColor, gradient } = categoryInfoMap[category];
+    const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+    const handleDragEnter = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.types.includes('Files')) {
+            setIsDraggingOver(true);
+        }
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDraggingOver(false);
+
+        // Trigger the global upload button
+        const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
+        if (uploadButton) {
+            uploadButton.click();
+        }
+    };
 
     return (
         <button
             onClick={onClick}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
             className={`group relative text-left w-full h-full flex flex-col justify-between p-5 rounded-3xl shadow-sm transition-all duration-200 overflow-hidden border
             ${gradient}
-            border-stone-200/80 dark:border-slate-800
+            ${isDraggingOver
+                ? 'border-4 border-dashed border-teal-500 dark:border-teal-400 scale-105 shadow-lg'
+                : 'border-stone-200/80 dark:border-slate-800'}
             hover:shadow-md hover:border-teal-400/60 dark:hover:border-teal-500/60`}
         >
             <div>
@@ -37,6 +75,11 @@ const CategoryTile: React.FC<{ category: DocumentCategory; count: number; onClic
             <p className="text-sm text-slate-500 dark:text-slate-400">
                 {count} record{count !== 1 ? 's' : ''}
             </p>
+            {isDraggingOver && (
+                <div className="absolute inset-0 flex items-center justify-center bg-teal-500/10 backdrop-blur-sm rounded-3xl pointer-events-none">
+                    <UploadIcon className="w-12 h-12 text-teal-600 dark:text-teal-400 animate-bounce" />
+                </div>
+            )}
         </button>
     )
 };

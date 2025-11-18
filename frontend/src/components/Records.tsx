@@ -9,6 +9,7 @@ import { EmptyRecords } from './illustrations/EmptyRecords';
 import { categoryInfoMap } from '../utils/category-info';
 import { ChevronDownIcon } from './icons/ChevronDownIcon';
 import { CATEGORIES, TIMEOUTS } from '../config/constants';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 interface RecordsProps {
   documents: DocumentFile[];
@@ -88,18 +89,7 @@ const Records: React.FC<RecordsProps> = ({
     const sortDropdownRef = useRef<HTMLDivElement>(null);
 
     // Close sort dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
-                setSortDropdownOpen(false);
-            }
-        };
-
-        if (sortDropdownOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [sortDropdownOpen]);
+    useClickOutside(sortDropdownRef, () => setSortDropdownOpen(false), sortDropdownOpen);
 
     const getSortLabel = (value: string) => {
         switch (value) {

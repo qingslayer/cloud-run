@@ -1,111 +1,286 @@
 # HealthVault
 
-Personal health records management system with AI-powered document analysis and search.
+Personal health records management system with AI-powered document analysis, intelligent search, and conversational chat capabilities.
+
+[![Technology](https://img.shields.io/badge/Stack-React%20%7C%20Node.js%20%7C%20GCP-blue)](#technology-stack)
+[![AI](https://img.shields.io/badge/AI-Google%20Gemini-orange)](#ai-features)
+[![Deployment](https://img.shields.io/badge/Deploy-Cloud%20Run-green)](#deployment)
 
 ---
 
-## Table of Contents
+## 📖 Documentation
 
-- [Overview](#overview)
-- [Quick Start](#quick-start)
-- [Documentation](#documentation)
-- [Project Structure](#project-structure)
-- [Technology Stack](#technology-stack)
-- [Development](#development)
-- [Testing](#testing)
-- [Deployment](#deployment)
+- **[Architecture Guide](ARCHITECTURE.md)** - Technical implementation details, API design, data models
+- **[Shared Resources Library](SHARED_RESOURCES.md)** - Catalog of all reusable code, utilities, and constants
+- **[Frontend Architecture](docs/FRONTEND.md)** - Frontend-specific patterns, components, and best practices
+- **[Testing Guide](backend/tests/README.md)** - API testing documentation and test scripts
+- **[Development Guidelines](GEMINI.md)** - Collaboration practices and code quality standards
 
 ---
 
-## Overview
+## ✨ Features
 
-HealthVault is a full-stack application that helps users manage their personal health records with AI-powered features:
+### Core Functionality
+- **Document Management** - Upload, organize, and manage health documents (PDFs, images)
+- **AI-Powered Analysis** - Automatic categorization and data extraction from medical documents
+- **Intelligent Search** - Natural language search with query intent detection
+- **Conversational Chat** - Ask questions about your health records with context-aware AI
+- **Secure Storage** - End-to-end encryption with Firebase Authentication and Cloud Storage
 
-**Core Features:**
-- 📄 **Document Management** - Upload, organize, and manage health documents
-- 🤖 **AI Analysis** - Automatic extraction of structured data from documents
-- 🔍 **Smart Search** - Semantic search with natural language queries
-- 💬 **AI Chat** - Conversational interface to query your health data
-- 🎨 **Modern UI** - Clean, responsive design with dark mode support
-- 🔐 **Secure** - Firebase authentication with encrypted cloud storage
+### AI Capabilities
+- **Smart Categorization** - Automatically categorizes documents (Lab Results, Prescriptions, Imaging Reports, etc.)
+- **Data Extraction** - Extracts structured data (test results, medications, dates, values)
+- **Search Optimization** - Generates concise summaries for efficient search
+- **Query Routing** - Intelligently routes queries (simple → direct DB, complex → AI)
+- **Conversational Memory** - Maintains chat context with session caching
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js v18 or higher
-- Google Cloud account ([create one here](https://console.cloud.google.com/projectcreate))
-- gcloud CLI ([installation guide](https://cloud.google.com/sdk/docs/install))
+- **Node.js** v18+ ([download](https://nodejs.org/))
+- **Google Cloud Account** ([create project](https://console.cloud.google.com/projectcreate))
+  - Required roles: Owner/Editor for the project
+  - Firebase Authentication Admin
+- **gcloud CLI** ([installation guide](https://cloud.google.com/sdk/docs/install))
+- **Gemini API Key** ([get key](https://aistudio.google.com/app/apikey))
 
-### Installation
+### 1. Google Cloud Setup
 
-1. **Clone the repository**
 ```bash
-git clone <repository-url>
-cd cloud-run
-```
-
-2. **Set up Google Cloud** (see [detailed setup](#google-cloud-setup))
-```bash
+# Authenticate
 gcloud auth login
+gcloud auth application-default login
+
+# Set project
 gcloud config set project YOUR-PROJECT-ID
+
+# Enable required APIs
+gcloud services enable run.googleapis.com \
+  storage.googleapis.com \
+  firestore.googleapis.com \
+  aiplatform.googleapis.com \
+  firebase.googleapis.com
+
+# Create resources (region: europe-west1)
+gsutil mb -l europe-west1 gs://healthvault-YOUR-PROJECT-ID
+gcloud firestore databases create --location=europe-west1
 ```
 
-3. **Start the backend**
+### 2. Backend Setup
+
 ```bash
 cd backend
+
+# Install dependencies
 npm install
+
+# Configure environment
 cp .env.example .env
-# Edit .env with your credentials
+# Edit .env:
+#   - GEMINI_API_KEY=your_key_here
+#   - GOOGLE_CLOUD_PROJECT=your-project-id
+#   - STORAGE_BUCKET=healthvault-your-project-id
+
+# Verify connections
+node tests/connection.test.js
+# Should show ✅ for Gemini, Storage, Firestore, Firebase
+
+# Start development server
 npm run dev
+# Backend runs on http://localhost:8080
 ```
 
-4. **Start the frontend**
+### 3. Frontend Setup
+
 ```bash
 cd frontend
+
+# Install dependencies
 npm install
+
+# Configure environment
+cp .env.example .env
+# Default: VITE_API_URL=http://localhost:8080
+
+# Start development server
 npm run dev
+# Frontend runs on http://localhost:5173
 ```
 
-5. **Open** `http://localhost:5173`
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐
+│  React Frontend │ ← TypeScript + Vite + TailwindCSS
+│  localhost:5173 │
+└────────┬────────┘
+         │ REST API
+         ▼
+┌─────────────────┐
+│ Express Backend │ ← Node.js + Express
+│  localhost:8080 │
+└────────┬────────┘
+         │
+    ┌────┴────┬──────────┬──────────┐
+    ▼         ▼          ▼          ▼
+┌────────┐ ┌─────┐ ┌────────┐ ┌────────┐
+│Firebase│ │ GCS │ │Firestore│ │Gemini │
+│  Auth  │ │     │ │        │ │  AI   │
+└────────┘ └─────┘ └────────┘ └────────┘
+```
+
+**For detailed architecture, see [ARCHITECTURE.md](ARCHITECTURE.md)**
 
 ---
 
-## Documentation
+## 🛠️ Technology Stack
 
-**For detailed information, see:**
+### Backend
+- **Framework:** Express.js (Node.js)
+- **Authentication:** Firebase Authentication
+- **Database:** Google Cloud Firestore
+- **Storage:** Google Cloud Storage
+- **AI:** Google Gemini AI (Gemini 1.5 Flash)
+- **Caching:** In-memory (session & search caching)
+- **File Processing:** Multer, Sharp
+- **Search:** Fuse.js (fuzzy search)
 
-- **[Shared Resources](docs/SHARED_RESOURCES.md)** - Catalog of all reusable components, hooks, utilities (⭐ **Reference this when building!**)
-- **[Frontend Architecture](docs/FRONTEND.md)** - Frontend technical details, patterns, and best practices
-- **[Getting Started](#getting-started)** - Detailed setup instructions (below)
-- **[Testing Guide](backend/tests/README.md)** - API testing documentation
+### Frontend
+- **Framework:** React 18 with TypeScript
+- **Build Tool:** Vite
+- **Styling:** TailwindCSS
+- **Routing:** React Router
+- **State:** React Hooks (useState, useEffect)
+- **Auth:** Firebase SDK
+
+### Infrastructure
+- **Deployment:** Google Cloud Run (backend), Firebase Hosting (frontend)
+- **Region:** europe-west1
+- **CI/CD:** GitHub Actions (optional)
 
 ---
 
-## Project Structure
+## 📚 API Documentation
+
+### Core Endpoints
+
+**Documents:**
+- `GET /api/documents` - List documents (with filters & pagination)
+- `GET /api/documents/:id` - Get document + download URL
+- `POST /api/documents/upload` - Upload new document
+- `PATCH /api/documents/:id` - Update metadata
+- `DELETE /api/documents/:id` - Delete document
+- `POST /api/documents/:id/analyze` - Trigger AI analysis
+- `POST /api/documents/search` - Intelligent search
+
+**Chat:**
+- `POST /api/chat` - Send message (with optional sessionId)
+- `POST /api/chat/end-session` - End chat session
+
+**Users:**
+- `POST /api/users` - Initialize/update profile
+- `GET /api/users/:uid` - Get profile
+- `PATCH /api/users/:uid` - Update profile
+
+**All routes require Firebase ID token:** `Authorization: Bearer <token>`
+
+**For complete API details, see [ARCHITECTURE.md](ARCHITECTURE.md#api-design)**
+
+---
+
+## 🧪 Testing
+
+### Quick Verification
+
+```bash
+cd backend
+
+# Test all GCP connections
+node tests/connection.test.js
+
+# Should show ✅ for:
+# - Gemini AI
+# - Cloud Storage
+# - Firestore
+# - Firebase Auth
+```
+
+### Feature Tests
+
+Comprehensive test suite covering all endpoints:
+
+```bash
+# Document tests
+node tests/documents/upload.test.js ~/path/to/file.pdf
+node tests/documents/list-documents.test.js
+node tests/documents/analyze-document.test.js ~/path/to/file.pdf
+
+# Search tests
+node tests/search/simple.test.js
+node tests/search/semantic.test.js
+node tests/search/answer.test.js
+
+# Chat tests
+node tests/chat/chat.test.js
+node tests/chat/chat-caching.test.js
+```
+
+**For detailed testing guide, see [backend/tests/README.md](backend/tests/README.md)**
+
+---
+
+## 🚢 Deployment
+
+### Backend (Cloud Run)
+
+```bash
+cd backend
+
+# Build and deploy
+gcloud run deploy healthvault-backend \
+  --source . \
+  --region europe-west1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --set-env-vars "NODE_ENV=production,GEMINI_API_KEY=your_key,..."
+```
+
+### Frontend (Firebase Hosting)
+
+```bash
+cd frontend
+
+# Build
+npm run build
+
+# Deploy
+firebase deploy --only hosting
+```
+
+---
+
+## 📂 Project Structure
 
 ```
 cloud-run/
 ├── backend/                    # Express.js backend
 │   ├── src/
-│   │   ├── routes/             # API endpoints
-│   │   │   ├── ai.js           # AI operations (chat, search)
-│   │   │   └── documents.js    # Document CRUD
-│   │   ├── services/
-│   │   │   └── gemini/         # AI service layer
-│   │   │       ├── chatService.js
-│   │   │       ├── searchService.js
-│   │   │       └── documentProcessor.js
-│   │   ├── middleware/
-│   │   │   └── auth.js         # Authentication
+│   │   ├── config/             # Configuration (Firebase, Firestore, Storage, Constants)
+│   │   ├── middleware/         # Auth middleware
+│   │   ├── routes/             # API routes (documents, chat, users)
+│   │   ├── services/           # Business logic (AI, caching, ranking, search)
+│   │   ├── utils/              # Shared utilities (responses, auth helpers)
 │   │   └── server.js           # Express app entry point
 │   └── tests/                  # API integration tests
 │
 ├── frontend/                   # React + TypeScript frontend
 │   └── src/
-│       ├── components/         # UI components (90+)
+│       ├── components/         # React components
 │       │   ├── common/         # ⭐ Reusable components
 │       │   ├── icons/          # Icon components (50+)
 │       │   └── illustrations/  # SVG illustrations
@@ -131,282 +306,64 @@ cloud-run/
 │       └── App.tsx             # Main application
 │
 └── docs/                       # 📚 Documentation
-    ├── SHARED_RESOURCES.md     # ⭐ Component/hook/util catalog
-    └── FRONTEND.md             # Frontend architecture guide
+    ├── FRONTEND.md             # ⭐ Frontend architecture & patterns
+    └── SHARED_RESOURCES.md     # ⭐ Frontend components/hooks catalog
 ```
 
-⭐ = **Check these directories first when building new features!**
+⭐ = **Check these directories/docs first when building new features!**
+
+**For detailed structure, see [ARCHITECTURE.md](ARCHITECTURE.md#backend-project-structure)**
 
 ---
 
-## Technology Stack
+## 🔧 Development
 
-### Backend
-- **Express.js** - Web framework
-- **Google Cloud Storage** - Document storage
-- **Firestore** - Document metadata database
-- **Gemini AI** - Document analysis and conversational AI
-- **Firebase Auth** - Authentication
-- **Multer** - File upload handling
+### Before Building a New Feature
 
-### Frontend
-- **React 18** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool & dev server
-- **TailwindCSS** - Styling with dark mode
-- **Firebase** - Authentication client
+1. **Check [SHARED_RESOURCES.md](SHARED_RESOURCES.md)** - Don't duplicate existing code!
+2. **Check [docs/FRONTEND.md](docs/FRONTEND.md)** - Follow frontend patterns & use existing components
+3. **Use existing utilities** - Constants, response helpers, auth utilities, AI services
+4. **Follow patterns** - See [GEMINI.md](GEMINI.md) for guidelines
+5. **Write tests** - Add integration tests for new endpoints
 
-### Infrastructure
-- **Cloud Run** - Serverless deployment (europe-west1)
-- **Artifact Registry** - Container registry
+### Code Quality Principles
 
----
+- **DRY (Don't Repeat Yourself)** - Use shared utilities and constants
+- **Singleton Pattern** - Use existing Firestore/Storage instances
+- **Standardized Responses** - Use response utility functions
+- **Security First** - Verify auth on all protected routes
+- **Performance** - Use caching where appropriate
 
-## Getting Started
-
-### Google Cloud Setup
-
-**Important:** This project uses the `europe-west1` region.
-
-**1. Authenticate and configure:**
-```bash
-gcloud auth login                           # gcloud CLI
-gcloud auth application-default login       # app credentials
-
-gcloud config set project YOUR-PROJECT-ID
-gcloud config get-value project             # verify
-```
-
-**2. Enable required APIs:**
-```bash
-gcloud services enable run.googleapis.com
-gcloud services enable storage.googleapis.com
-gcloud services enable firestore.googleapis.com
-gcloud services enable aiplatform.googleapis.com
-gcloud services enable firebase.googleapis.com
-```
-
-**3. Create required resources:**
-```bash
-# Storage bucket
-gsutil mb -l europe-west1 gs://healthvault-YOUR-PROJECT-ID
-
-# Firestore database
-gcloud firestore databases create --location=europe-west1
-```
+**For complete guidelines, see [GEMINI.md](GEMINI.md)**
 
 ---
 
-### Backend Setup
+## 🤝 Contributing
 
-**1. Install dependencies:**
-```bash
-cd backend
-npm install
-```
-
-**2. Configure environment:**
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set:
-- `GEMINI_API_KEY` - Get from [Google AI Studio](https://aistudio.google.com/app/apikey)
-- `GOOGLE_CLOUD_PROJECT` - Your GCP project ID
-- `STORAGE_BUCKET` - Your bucket name (e.g., `healthvault-YOUR-PROJECT-ID`)
-
-**3. Verify connections:**
-```bash
-node tests/connection.test.js
-```
-
-Should show ✅ for all services (Gemini, Storage, Firestore, Firebase).
-
-**Troubleshooting:**
-```bash
-gcloud auth application-default login
-gcloud config get-value project
-gcloud services list --enabled | grep -E "run|storage|firestore|firebase"
-```
-
-**4. Start development server:**
-```bash
-npm run dev
-```
-
-Backend runs on `http://localhost:8080`
+1. Follow the development guidelines in [GEMINI.md](GEMINI.md)
+2. Check [SHARED_RESOURCES.md](SHARED_RESOURCES.md) before adding new utilities
+3. Check [docs/FRONTEND.md](docs/FRONTEND.md) for frontend component patterns
+4. Update documentation when adding features
+5. Write tests for new endpoints
+6. Maintain code quality and consistency
 
 ---
 
-### Frontend Setup
+## 📝 License
 
-**1. Install dependencies:**
-```bash
-cd frontend
-npm install
-```
-
-**2. Configure environment:**
-```bash
-cp .env.example .env
-```
-
-Default points to `http://localhost:8080`. Update `VITE_API_URL` if needed.
-
-**3. Start development server:**
-```bash
-npm run dev
-```
-
-Frontend runs on `http://localhost:5173`
+This project is for educational and demonstration purposes.
 
 ---
 
-## Development
+## 🔗 Useful Links
 
-### Code Organization
-
-**Before building new features:**
-1. 📖 **Check** [docs/SHARED_RESOURCES.md](docs/SHARED_RESOURCES.md) - Don't duplicate existing code!
-2. 🔧 **Reuse** existing components, hooks, and utilities
-3. 📝 **Follow** patterns in [docs/FRONTEND.md](docs/FRONTEND.md)
-4. ✅ **Update** documentation when adding shared code
-
-### API Endpoints
-
-**Document Management:**
-- `GET /api/documents` - List all documents
-- `GET /api/documents/:id` - Get document details
-- `POST /api/documents/upload` - Upload new document
-- `PATCH /api/documents/:id` - Update document
-- `DELETE /api/documents/:id` - Delete document
-- `POST /api/documents/:id/analyze` - Trigger AI analysis
-
-**AI Features:**
-- `POST /api/search` - Universal search (semantic, Q&A, or chat)
-- `POST /api/chat` - Conversational AI with context
-
-**Health:**
-- `GET /health` - Health check
+- [Google Cloud Console](https://console.cloud.google.com/)
+- [Firebase Console](https://console.firebase.google.com/)
+- [Gemini API Studio](https://aistudio.google.com/)
+- [Cloud Run Documentation](https://cloud.google.com/run/docs)
+- [Firestore Documentation](https://cloud.google.com/firestore/docs)
+- [Firebase Auth Documentation](https://firebase.google.com/docs/auth)
 
 ---
 
-## Testing
-
-### Connection Test
-
-Verify GCP service connections:
-
-```bash
-cd backend
-node tests/connection.test.js
-```
-
-### API Tests
-
-Comprehensive API test suite:
-
-```bash
-cd backend
-node tests/<category>/<test-name>.test.js
-```
-
-**Categories:**
-- `documents/` - Document management tests
-- `chat/` - Chat functionality tests
-- `search/` - Search functionality tests
-
-For detailed testing guide, see [backend/tests/README.md](backend/tests/README.md).
-
----
-
-## Deployment
-
-### Backend Deployment (Cloud Run)
-
-**1. Build container:**
-```bash
-cd backend
-docker build -t gcr.io/YOUR-PROJECT-ID/healthvault-backend .
-```
-
-**2. Push to Artifact Registry:**
-```bash
-docker push gcr.io/YOUR-PROJECT-ID/healthvault-backend
-```
-
-**3. Deploy to Cloud Run:**
-```bash
-gcloud run deploy healthvault-backend \
-  --image gcr.io/YOUR-PROJECT-ID/healthvault-backend \
-  --region europe-west1 \
-  --allow-unauthenticated
-```
-
-### Frontend Deployment
-
-**1. Build for production:**
-```bash
-cd frontend
-npm run build
-```
-
-**2. Deploy static files:**
-
-Deploy the `/dist` directory to your preferred hosting:
-- Firebase Hosting
-- Vercel
-- Netlify
-- Cloud Storage + CDN
-
----
-
-## Contributing
-
-### Code Standards
-
-- **TypeScript** - Use proper typing, avoid `any`
-- **Components** - Keep them small and focused
-- **Reusability** - Extract common code to shared locations
-- **Documentation** - Update docs when adding shared resources
-- **Testing** - Write tests for new features (when test suite is set up)
-
-### Development Workflow
-
-1. Check [SHARED_RESOURCES.md](docs/SHARED_RESOURCES.md) for existing code
-2. Create feature branch
-3. Make changes following existing patterns
-4. Update documentation if adding shared code
-5. Test thoroughly
-6. Create pull request
-
----
-
-## Resources
-
-- [Shared Resources Catalog](docs/SHARED_RESOURCES.md) - ⭐ **Start here when building!**
-- [Frontend Architecture](docs/FRONTEND.md) - Technical details and patterns
-- [Backend Tests](backend/tests/README.md) - API testing guide
-- [Google Cloud Docs](https://cloud.google.com/docs)
-- [Gemini API Docs](https://ai.google.dev/docs)
-- [React Docs](https://react.dev)
-- [TailwindCSS Docs](https://tailwindcss.com)
-
----
-
-## License
-
-[Your License Here]
-
----
-
-## Support
-
-For questions or issues:
-- Check the [documentation](docs/)
-- Review [SHARED_RESOURCES.md](docs/SHARED_RESOURCES.md) for existing solutions
-- Open an issue on GitHub
-
----
-
-**Built with ❤️ using Google Cloud Platform and Gemini AI**
+**For questions or issues, please refer to the documentation files linked at the top of this README.**

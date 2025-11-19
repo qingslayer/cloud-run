@@ -1,31 +1,28 @@
 import express from 'express';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
-import { Storage } from '@google-cloud/storage';
+import { FieldValue } from '@google-cloud/firestore';
+import { firestore } from '../config/firestore.js';
+import { storage } from '../config/storage.js';
+import { FILE_LIMITS, QUERY_LIMITS, TIME_DURATIONS, FUZZY_SEARCH_CONFIG, ERROR_MESSAGES } from '../config/constants.js';
+import { sendBadRequest, sendForbidden, sendNotFound, sendServerError, sendSuccess } from '../utils/responses.js';
+import { getOwnedDocument } from '../utils/documentAuth.js';
 import { getAIChatResponse } from '../services/gemini/chatService.js';
 import { getAISummary, getAIAnswer } from '../services/gemini/searchService.js';
-import { extractTextFromDocument, analyzeAndCategorizeDocument, extractStructuredData, generateSearchSummary } from '../services/gemini/documentProcessor.js';
-import { Firestore, FieldValue } from '@google-cloud/firestore';
+import { analyzeDocument } from '../services/gemini/documentAnalyzer.js';
 import { analyzeQuery, generateSimilaritySuggestions } from '../services/queryAnalyzer.js';
 import sessionCache from '../services/sessionCache.js';
 import { getCachedResults, setCachedResults, invalidateUserCache } from '../services/searchCache.js';
 import { rankDocuments } from '../services/searchRanking.js';
 import Fuse from 'fuse.js';
 
-
 const router = express.Router();
-
-// Initialize Google Cloud clients with explicit projectId to use Application Default Credentials
-// This prevents them from trying to load GOOGLE_APPLICATION_CREDENTIALS file path
-const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'helpful-beach-476908-p3';
-const storage = new Storage({ projectId });
-const firestore = new Firestore({ projectId });
 
 // Configure multer for file uploads (store in memory)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: FILE_LIMITS.MAX_FILE_SIZE,
   },
 });
 
@@ -58,7 +55,7 @@ function computeSearchableText(doc) {
 router.get('/', async (req, res) => {
   try {
     const { uid } = req.user; // UID from authenticated user
-    const { category, limit = 50, offset = 0 } = req.query;
+    const { category, limit = QUERY_LIMITS.DEFAULT_LIST, offset = 0 } = req.query;
 
     // Build the base query
     let query = firestore.collection('documents').where('userId', '==', uid);
@@ -360,29 +357,17 @@ router.get('/:id', async (req, res) => {
     const { uid } = req.user;
     const { id } = req.params;
 
-    // 1. Fetch document from Firestore
-    const docRef = firestore.collection('documents').doc(id);
-    const doc = await docRef.get();
+    // 1. Fetch document and verify ownership
+    const { documentData } = await getOwnedDocument(id, uid);
 
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    const documentData = doc.data();
-
-    // 2. Verify user has access
-    if (documentData.userId !== uid) {
-      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
-    }
-
-    // 3. Generate signed URL for download
+    // 2. Generate signed URL for download
     const bucketName = process.env.STORAGE_BUCKET;
     const fileName = documentData.storagePath;
 
     const options = {
       version: 'v4',
       action: 'read',
-      expires: Date.now() + 60 * 60 * 1000, // 1 hour
+      expires: Date.now() + TIME_DURATIONS.SIGNED_URL_EXPIRY,
     };
 
     const [downloadUrl] = await storage
@@ -397,11 +382,15 @@ router.get('/:id', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching document:', error);
-    res.status(500).json({
-      error: 'Failed to fetch document',
-      message: error.message
-    });
+    // Handle errors from getOwnedDocument (404 or 403)
+    if (error.status === 404) {
+      return sendNotFound(res, error.message);
+    }
+    if (error.status === 403) {
+      return sendForbidden(res, error.message);
+    }
+    // Handle other errors
+    return sendServerError(res, error, ERROR_MESSAGES.DOCUMENT_FETCH_FAILED);
   }
 });
 
@@ -556,22 +545,10 @@ router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 1. Fetch document from Firestore
-    const docRef = firestore.collection('documents').doc(id);
-    const doc = await docRef.get();
+    // 1. Fetch document and verify ownership
+    const { docRef, documentData } = await getOwnedDocument(id, uid);
 
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    const documentData = doc.data();
-
-    // 2. Verify user has access
-    if (documentData.userId !== uid) {
-      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
-    }
-
-    // 3. Delete file from Cloud Storage
+    // 2. Delete file from Cloud Storage
     const bucketName = process.env.STORAGE_BUCKET;
     const fileName = documentData.storagePath;
     const file = storage.bucket(bucketName).file(fileName);
@@ -626,22 +603,10 @@ router.patch('/:id', async (req, res) => {
   const updates = req.body;
 
   try {
-    // 1. Fetch document from Firestore
-    const docRef = firestore.collection('documents').doc(id);
-    const doc = await docRef.get();
+    // 1. Fetch document and verify ownership
+    const { docRef, documentData } = await getOwnedDocument(id, uid);
 
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    const documentData = doc.data();
-
-    // 2. Verify user has access
-    if (documentData.userId !== uid) {
-      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
-    }
-
-    // 3. Validate request body
+    // 2. Validate request body
     const immutableFields = ['id', 'userId', 'filename', 'fileType', 'size', 'storagePath', 'uploadDate'];
     for (const field of immutableFields) {
       if (updates.hasOwnProperty(field)) {
@@ -741,44 +706,22 @@ router.post('/:id/analyze', async (req, res) => {
   const { id } = req.params;
 
   try {
-    // 1. Fetch document from Firestore and verify ownership
-    const docRef = firestore.collection('documents').doc(id);
-    const doc = await docRef.get();
-
-    if (!doc.exists) {
-      return res.status(404).json({ error: 'Document not found' });
-    }
-
-    const documentData = doc.data();
-
-    if (documentData.userId !== uid) {
-      return res.status(403).json({ error: 'Forbidden: You do not have access to this document' });
-    }
+    // 1. Fetch document and verify ownership
+    const { docRef, documentData } = await getOwnedDocument(id, uid);
 
     // 2. Download file from Cloud Storage
     const fileBuffer = await storage.bucket(process.env.STORAGE_BUCKET).file(documentData.storagePath).download();
     const base64Data = fileBuffer[0].toString('base64');
 
-    // 3. Analyze with Gemini (using existing services)
+    // 3. Analyze with Gemini using unified pipeline
     let analysisResults;
     try {
-      const extractedText = await extractTextFromDocument(base64Data, documentData.fileType);
-      const categorization = await analyzeAndCategorizeDocument(extractedText);
-      const structuredData = await extractStructuredData(extractedText, categorization.category);
-      const searchSummary = await generateSearchSummary(extractedText, categorization.category, structuredData);
-
+      const analysis = await analyzeDocument(base64Data, documentData.fileType);
       analysisResults = {
-        displayName: categorization.title,
-        category: categorization.category,
-        aiAnalysis: {
-          category: categorization.category,
-          structuredData: structuredData,
-          searchSummary: searchSummary,  // Concise summary for efficient AI search
-        },
+        ...analysis,
         status: 'complete', // Mark as complete after successful analysis
         analyzedAt: FieldValue.serverTimestamp(),
       };
-
     } catch (aiError) {
       console.error(`AI processing failed for document ${id}:`, aiError);
       const userMessage = 'Unable to analyze document. The AI model could not process the file.';

@@ -4,6 +4,7 @@ import { Theme } from '../types';
 import { NoSymbolIcon } from './icons/NoSymbolIcon';
 import { PencilIcon } from './icons/PencilIcon';
 import { updateUserProfile } from '../services/userService';
+import { TIMEOUTS } from '../config/constants';
 
 interface SettingsProps {
     theme: Theme;
@@ -76,7 +77,7 @@ const Settings: React.FC<SettingsProps> = ({ theme, setTheme, onDeleteAllRecords
             setIsEditingProfile(false);
 
             // Hide success message after 3 seconds
-            setTimeout(() => setSaveSuccess(false), 3000);
+            setTimeout(() => setSaveSuccess(false), TIMEOUTS.SETTINGS_SAVE_HIDE);
         } catch (error: any) {
             console.error('Error updating profile:', error);
             setSaveError(error.message || 'Failed to update profile');

@@ -3,6 +3,7 @@ import { ChatMessage as ChatMessageType } from '../types';
 import ChatMessage from './ChatMessage';
 import { PaperAirplaneIcon } from './icons/PaperAirplaneIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
+import { UploadIcon } from './icons/UploadIcon';
 
 interface ChatPanelProps {
   messages: ChatMessageType[];
@@ -13,6 +14,7 @@ interface ChatPanelProps {
 
 const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, isLoading, hasDocuments }) => {
   const [input, setInput] = useState('');
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -31,8 +33,62 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ messages, onSendMessage, isLoadin
     }
   };
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x <= rect.left || x >= rect.right || y <= rect.top || y >= rect.bottom) {
+      setIsDraggingOver(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+
+    // Trigger the global upload button for now
+    // TODO: In the future, this could handle file attachments directly in chat
+    const uploadButton = document.querySelector('[aria-label="Upload documents"]') as HTMLButtonElement;
+    if (uploadButton) {
+      uploadButton.click();
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col bg-stone-100 dark:bg-slate-800/50">
+    <div
+      className="h-full flex flex-col bg-stone-100 dark:bg-slate-800/50 relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Drag Overlay */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-teal-500/20 backdrop-blur-sm rounded-2xl pointer-events-none">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-2xl text-center border-4 border-dashed border-teal-500">
+            <UploadIcon className="w-16 h-16 mx-auto mb-4 text-teal-600 dark:text-teal-400 animate-bounce" />
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">Drop files to upload</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400">Files will be added to your health vault</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex-grow overflow-y-auto p-4 md:p-6 space-y-6">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">

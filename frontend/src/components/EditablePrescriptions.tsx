@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlusIcon } from './icons/PlusIcon';
 import { TrashIcon } from './icons/TrashIcon';
+import EditableInput from './common/EditableInput';
 
 interface Prescription {
   medication: string;
@@ -46,38 +47,30 @@ const EditablePrescriptions: React.FC<EditablePrescriptionsProps> = ({ prescript
             {prescriptions.map((prescription, index) => (
               <tr key={index}>
                 <td className="p-1 border border-slate-300 dark:border-slate-600">
-                  <input
-                    type="text"
+                  <EditableInput
                     value={prescription.medication}
-                    onChange={(e) => handlePrescriptionChange(index, 'medication', e.target.value)}
-                    className="w-full bg-white dark:bg-slate-700 border-0 p-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-sky-500 rounded"
+                    onChange={(value) => handlePrescriptionChange(index, 'medication', value)}
                     placeholder="Medication name"
                   />
                 </td>
                 <td className="p-1 border border-slate-300 dark:border-slate-600">
-                  <input
-                    type="text"
+                  <EditableInput
                     value={prescription.dosage}
-                    onChange={(e) => handlePrescriptionChange(index, 'dosage', e.target.value)}
-                    className="w-full bg-white dark:bg-slate-700 border-0 p-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-sky-500 rounded"
+                    onChange={(value) => handlePrescriptionChange(index, 'dosage', value)}
                     placeholder="e.g., 10mg"
                   />
                 </td>
                 <td className="p-1 border border-slate-300 dark:border-slate-600">
-                  <input
-                    type="text"
+                  <EditableInput
                     value={prescription.frequency}
-                    onChange={(e) => handlePrescriptionChange(index, 'frequency', e.target.value)}
-                    className="w-full bg-white dark:bg-slate-700 border-0 p-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-sky-500 rounded"
+                    onChange={(value) => handlePrescriptionChange(index, 'frequency', value)}
                     placeholder="e.g., Twice daily"
                   />
                 </td>
                 <td className="p-1 border border-slate-300 dark:border-slate-600">
-                  <input
-                    type="text"
+                  <EditableInput
                     value={prescription.instructions || ''}
-                    onChange={(e) => handlePrescriptionChange(index, 'instructions', e.target.value)}
-                    className="w-full bg-white dark:bg-slate-700 border-0 p-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-sky-500 rounded"
+                    onChange={(value) => handlePrescriptionChange(index, 'instructions', value)}
                     placeholder="Special instructions"
                   />
                 </td>

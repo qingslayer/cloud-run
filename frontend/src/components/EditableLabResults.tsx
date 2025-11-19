@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlusIcon } from './icons/PlusIcon';
 import { TrashIcon } from './icons/TrashIcon';
+import EditableInput from './common/EditableInput';
 
 interface LabResult {
   testName: string;
@@ -46,38 +47,30 @@ const EditableLabResults: React.FC<EditableLabResultsProps> = ({ results, onChan
             {results.map((result, index) => (
               <tr key={index}>
                 <td className="p-1 border border-slate-300 dark:border-slate-600">
-                  <input
-                    type="text"
+                  <EditableInput
                     value={result.testName}
-                    onChange={(e) => handleResultChange(index, 'testName', e.target.value)}
-                    className="w-full bg-white dark:bg-slate-700 border-0 p-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-sky-500 rounded"
+                    onChange={(value) => handleResultChange(index, 'testName', value)}
                     placeholder="Test name"
                   />
                 </td>
                 <td className="p-1 border border-slate-300 dark:border-slate-600">
-                  <input
-                    type="text"
+                  <EditableInput
                     value={result.value}
-                    onChange={(e) => handleResultChange(index, 'value', e.target.value)}
-                    className="w-full bg-white dark:bg-slate-700 border-0 p-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-sky-500 rounded"
+                    onChange={(value) => handleResultChange(index, 'value', value)}
                     placeholder="Value"
                   />
                 </td>
                 <td className="p-1 border border-slate-300 dark:border-slate-600">
-                  <input
-                    type="text"
+                  <EditableInput
                     value={result.unit}
-                    onChange={(e) => handleResultChange(index, 'unit', e.target.value)}
-                    className="w-full bg-white dark:bg-slate-700 border-0 p-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-sky-500 rounded"
+                    onChange={(value) => handleResultChange(index, 'unit', value)}
                     placeholder="Unit"
                   />
                 </td>
                 <td className="p-1 border border-slate-300 dark:border-slate-600">
-                  <input
-                    type="text"
+                  <EditableInput
                     value={result.referenceRange}
-                    onChange={(e) => handleResultChange(index, 'referenceRange', e.target.value)}
-                    className="w-full bg-white dark:bg-slate-700 border-0 p-2 text-sm text-slate-800 dark:text-slate-200 focus:ring-1 focus:ring-sky-500 rounded"
+                    onChange={(value) => handleResultChange(index, 'referenceRange', value)}
                     placeholder="Range"
                   />
                 </td>

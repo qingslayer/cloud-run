@@ -15,6 +15,8 @@ import { CalendarIcon } from './icons/CalendarIcon';
 import { categoryInfoMap } from '../utils/category-info';
 import { ClipboardNotesIcon } from './icons/ClipboardNotesIcon';
 import { getDocumentDate } from '../utils/health-helpers';
+import { CATEGORIES } from '../config/constants';
+import { useClickOutside } from '../hooks/useClickOutside';
 
 interface NavigationContext {
   allDocuments: DocumentFile[];
@@ -33,8 +35,6 @@ interface DocumentDetailViewProps {
   initialEditMode?: boolean;  // Start in edit mode if true
 }
 
-const categories: DocumentCategory[] = ['Lab Results', 'Prescriptions', 'Imaging Reports', "Doctor's Notes", 'Vaccination Records', 'Other'];
-
 const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, onClose, onUpdate, onDelete, navigationContext, onNavigate, initialEditMode = false }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(initialEditMode);
@@ -52,21 +52,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
   const { color, lightColor } = categoryInfoMap[documentData.category];
 
   // Close menu on outside click
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    };
-
-    if (isMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isMenuOpen]);
+  useClickOutside(menuRef, () => setIsMenuOpen(false), isMenuOpen);
 
   // Keyboard navigation
   useEffect(() => {
@@ -176,7 +162,7 @@ const DocumentDetailView: React.FC<DocumentDetailViewProps> = ({ documentData, o
                     onChange={e => setEditedCategory(e.target.value as DocumentCategory)}
                     className="mb-3 bg-white dark:bg-slate-800/60 border border-stone-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none"
                   >
-                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
 
                   <label className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2 block mt-4">Document Title</label>

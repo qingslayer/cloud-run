@@ -12,6 +12,7 @@ Personal health records management system with AI-powered document analysis, int
 
 - **[Architecture Guide](ARCHITECTURE.md)** - Technical implementation details, API design, data models
 - **[Shared Resources Library](SHARED_RESOURCES.md)** - Catalog of all reusable code, utilities, and constants
+- **[Frontend Architecture](docs/FRONTEND.md)** - Frontend-specific patterns, components, and best practices
 - **[Testing Guide](backend/tests/README.md)** - API testing documentation and test scripts
 - **[Development Guidelines](GEMINI.md)** - Collaboration practices and code quality standards
 
@@ -277,14 +278,39 @@ cloud-run/
 │   │   └── server.js           # Express app entry point
 │   └── tests/                  # API integration tests
 │
-└── frontend/                   # React + TypeScript frontend
-    └── src/
-        ├── components/         # React components
-        ├── services/           # API client services
-        ├── hooks/              # Custom React hooks
-        ├── utils/              # Utility functions
-        └── App.tsx             # Main app component
+├── frontend/                   # React + TypeScript frontend
+│   └── src/
+│       ├── components/         # React components
+│       │   ├── common/         # ⭐ Reusable components
+│       │   ├── icons/          # Icon components (50+)
+│       │   └── illustrations/  # SVG illustrations
+│       ├── config/             # ⭐ Centralized configuration
+│       │   ├── constants.ts    # Categories, timeouts, storage keys
+│       │   ├── messages.ts     # UI messages & errors
+│       │   ├── api.ts          # API configuration
+│       │   └── firebase.ts     # Firebase config
+│       ├── hooks/              # ⭐ Custom React hooks
+│       │   ├── useToast.ts
+│       │   ├── useOnboarding.ts
+│       │   └── useClickOutside.ts
+│       ├── services/           # Backend API clients
+│       │   ├── documentProcessor.ts
+│       │   ├── chatService.ts
+│       │   ├── searchService.ts
+│       │   └── userService.ts
+│       ├── utils/              # ⭐ Utility functions
+│       │   ├── formatters.ts
+│       │   ├── category-info.ts
+│       │   └── health-helpers.ts
+│       ├── types.ts            # TypeScript definitions
+│       └── App.tsx             # Main application
+│
+└── docs/                       # 📚 Documentation
+    ├── FRONTEND.md             # ⭐ Frontend architecture & patterns
+    └── SHARED_RESOURCES.md     # ⭐ Frontend components/hooks catalog
 ```
+
+⭐ = **Check these directories/docs first when building new features!**
 
 **For detailed structure, see [ARCHITECTURE.md](ARCHITECTURE.md#backend-project-structure)**
 
@@ -295,9 +321,10 @@ cloud-run/
 ### Before Building a New Feature
 
 1. **Check [SHARED_RESOURCES.md](SHARED_RESOURCES.md)** - Don't duplicate existing code!
-2. **Use existing utilities** - Constants, response helpers, auth utilities, AI services
-3. **Follow patterns** - See [GEMINI.md](GEMINI.md) for guidelines
-4. **Write tests** - Add integration tests for new endpoints
+2. **Check [docs/FRONTEND.md](docs/FRONTEND.md)** - Follow frontend patterns & use existing components
+3. **Use existing utilities** - Constants, response helpers, auth utilities, AI services
+4. **Follow patterns** - See [GEMINI.md](GEMINI.md) for guidelines
+5. **Write tests** - Add integration tests for new endpoints
 
 ### Code Quality Principles
 
@@ -315,9 +342,10 @@ cloud-run/
 
 1. Follow the development guidelines in [GEMINI.md](GEMINI.md)
 2. Check [SHARED_RESOURCES.md](SHARED_RESOURCES.md) before adding new utilities
-3. Update documentation when adding features
-4. Write tests for new endpoints
-5. Maintain code quality and consistency
+3. Check [docs/FRONTEND.md](docs/FRONTEND.md) for frontend component patterns
+4. Update documentation when adding features
+5. Write tests for new endpoints
+6. Maintain code quality and consistency
 
 ---
 

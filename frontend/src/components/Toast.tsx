@@ -3,6 +3,7 @@ import { CheckCircleIcon } from './icons/CheckCircleIcon';
 import { XIcon } from './icons/XIcon';
 import { AlertCircleIcon } from './icons/AlertCircleIcon';
 import { InfoIcon } from './icons/InfoIcon';
+import { TIMEOUTS } from '../config/constants';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -14,7 +15,7 @@ export interface ToastProps {
   onClose: (id: string) => void;
 }
 
-const Toast: React.FC<ToastProps> = ({ id, type, message, duration = 4000, onClose }) => {
+const Toast: React.FC<ToastProps> = ({ id, type, message, duration = TIMEOUTS.TOAST_DEFAULT, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose(id);

@@ -1,4 +1,6 @@
 import { ai, model } from './client.js';
+import { buildDocumentContext } from './utils/aiContext.js';
+import { matchDocumentReferences } from './utils/documentMatcher.js';
 
 /**
  * Search Service
@@ -12,24 +14,7 @@ import { ai, model } from './client.js';
  * @returns {Promise<{answer: string, referencedDocuments: Array}>}
  */
 export async function getAIAnswer(query, documents = []) {
-  const documentContext = documents
-    .map(doc => {
-      const a = doc.aiAnalysis || {};
-
-      // Build structured data string (for precise lookups)
-      const structuredDataStr = a.structuredData && Object.keys(a.structuredData).length > 0
-        ? Object.entries(a.structuredData)
-            .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
-            .join('\n')
-        : null;
-
-      // Build context from searchSummary (overview) + structuredData (precision)
-      return `--- DOCUMENT: ${doc.displayName || doc.filename} ---
-Summary: ${a.searchSummary || 'No summary available'}
-${structuredDataStr ? '\nDetailed Values:\n' + structuredDataStr : ''}
---- END DOCUMENT ---`;
-    })
-    .join('\n\n');
+  const documentContext = buildDocumentContext(documents);
 
   const prompt = `You are a health records assistant for a personal health app. Your task is to answer the user's question factually and concisely based *only* on the provided document context.
 
@@ -184,66 +169,7 @@ Do NOT include "suggestedFollowUps".
       // The AI should return document references as displayName strings
       // We need to map them back to the full document objects from our input
       if (jsonResponse.referencedDocuments && Array.isArray(jsonResponse.referencedDocuments)) {
-        const matchedDocs = [];
-        const unmatchedRefs = [];
-
-        console.log(`📋 AI returned ${jsonResponse.referencedDocuments.length} document references`);
-
-        jsonResponse.referencedDocuments.forEach(ref => {
-          // Ref should be a string (displayName), but handle legacy object format too
-          const refString = typeof ref === 'string' ? ref : (ref.displayName || ref.filename || ref.id);
-
-          if (!refString) {
-            console.warn('  ⚠️  Skipping invalid reference:', ref);
-            unmatchedRefs.push(ref);
-            return;
-          }
-
-          // Try multiple matching strategies
-          let matchedDoc = null;
-
-          // 1. Try exact displayName match (most common)
-          matchedDoc = documents.find(d => d.displayName === refString);
-
-          // 2. Try exact filename match
-          if (!matchedDoc) {
-            matchedDoc = documents.find(d => d.filename === refString);
-          }
-
-          // 3. Try ID match (if AI returned an ID string)
-          if (!matchedDoc) {
-            matchedDoc = documents.find(d => d.id === refString);
-          }
-
-          // 4. Try partial match (case-insensitive, substring)
-          if (!matchedDoc) {
-            const normalizedRef = refString.toLowerCase().trim();
-            matchedDoc = documents.find(d =>
-              d.displayName?.toLowerCase().includes(normalizedRef) ||
-              normalizedRef.includes(d.displayName?.toLowerCase()) ||
-              d.filename?.toLowerCase().includes(normalizedRef) ||
-              normalizedRef.includes(d.filename?.toLowerCase())
-            );
-          }
-
-          if (matchedDoc) {
-            console.log(`  ✅ Matched: "${refString}" → ${matchedDoc.displayName}`);
-            matchedDocs.push(matchedDoc);
-          } else {
-            console.warn(`  ❌ No match for: "${refString}"`);
-            unmatchedRefs.push(refString);
-          }
-        });
-
-        // Log summary
-        console.log(`📊 Document matching: ${matchedDocs.length} matched, ${unmatchedRefs.length} unmatched`);
-
-        if (unmatchedRefs.length > 0) {
-          console.warn('⚠️  Available document names were:');
-          documents.forEach(d => console.warn(`     - "${d.displayName}"`));
-        }
-
-        jsonResponse.referencedDocuments = matchedDocs;
+        jsonResponse.referencedDocuments = matchDocumentReferences(jsonResponse.referencedDocuments, documents);
       } else {
         console.warn('⚠️  AI response missing referencedDocuments array');
         jsonResponse.referencedDocuments = [];
@@ -263,24 +189,7 @@ Do NOT include "suggestedFollowUps".
 
 
 export async function getAISummary(query, documents = []) {
-  const documentContext = documents
-    .map(doc => {
-      const a = doc.aiAnalysis || {};
-
-      // Build structured data string (for precise lookups)
-      const structuredDataStr = a.structuredData && Object.keys(a.structuredData).length > 0
-        ? Object.entries(a.structuredData)
-            .map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
-            .join('\n')
-        : null;
-
-      // Build context from searchSummary (overview) + structuredData (precision)
-      return `--- DOCUMENT: ${doc.displayName || doc.filename} ---
-Summary: ${a.searchSummary || 'No summary available'}
-${structuredDataStr ? '\nDetailed Values:\n' + structuredDataStr : ''}
---- END DOCUMENT ---`;
-    })
-    .join('\n\n');
+  const documentContext = buildDocumentContext(documents);
 
   const prompt = `You are a health document summarization assistant. Your task is to provide a concise, high-level overview based on the user's query and the provided document context. Identify the most relevant documents and synthesize their key findings into a brief summary.
 
@@ -345,66 +254,7 @@ ${documentContext}
       // The AI should return document references as displayName strings
       // We need to map them back to the full document objects from our input
       if (jsonResponse.referencedDocuments && Array.isArray(jsonResponse.referencedDocuments)) {
-        const matchedDocs = [];
-        const unmatchedRefs = [];
-
-        console.log(`📋 AI returned ${jsonResponse.referencedDocuments.length} document references`);
-
-        jsonResponse.referencedDocuments.forEach(ref => {
-          // Ref should be a string (displayName), but handle legacy object format too
-          const refString = typeof ref === 'string' ? ref : (ref.displayName || ref.filename || ref.id);
-
-          if (!refString) {
-            console.warn('  ⚠️  Skipping invalid reference:', ref);
-            unmatchedRefs.push(ref);
-            return;
-          }
-
-          // Try multiple matching strategies
-          let matchedDoc = null;
-
-          // 1. Try exact displayName match (most common)
-          matchedDoc = documents.find(d => d.displayName === refString);
-
-          // 2. Try exact filename match
-          if (!matchedDoc) {
-            matchedDoc = documents.find(d => d.filename === refString);
-          }
-
-          // 3. Try ID match (if AI returned an ID string)
-          if (!matchedDoc) {
-            matchedDoc = documents.find(d => d.id === refString);
-          }
-
-          // 4. Try partial match (case-insensitive, substring)
-          if (!matchedDoc) {
-            const normalizedRef = refString.toLowerCase().trim();
-            matchedDoc = documents.find(d =>
-              d.displayName?.toLowerCase().includes(normalizedRef) ||
-              normalizedRef.includes(d.displayName?.toLowerCase()) ||
-              d.filename?.toLowerCase().includes(normalizedRef) ||
-              normalizedRef.includes(d.filename?.toLowerCase())
-            );
-          }
-
-          if (matchedDoc) {
-            console.log(`  ✅ Matched: "${refString}" → ${matchedDoc.displayName}`);
-            matchedDocs.push(matchedDoc);
-          } else {
-            console.warn(`  ❌ No match for: "${refString}"`);
-            unmatchedRefs.push(refString);
-          }
-        });
-
-        // Log summary
-        console.log(`📊 Document matching: ${matchedDocs.length} matched, ${unmatchedRefs.length} unmatched`);
-
-        if (unmatchedRefs.length > 0) {
-          console.warn('⚠️  Available document names were:');
-          documents.forEach(d => console.warn(`     - "${d.displayName}"`));
-        }
-
-        jsonResponse.referencedDocuments = matchedDocs;
+        jsonResponse.referencedDocuments = matchDocumentReferences(jsonResponse.referencedDocuments, documents);
       } else {
         console.warn('⚠️  AI response missing referencedDocuments array');
         jsonResponse.referencedDocuments = [];

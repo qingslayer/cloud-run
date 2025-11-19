@@ -1,15 +1,12 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { Firestore } from '@google-cloud/firestore';
+import { firestore } from '../config/firestore.js';
 import { getAIChatResponse } from '../services/gemini/chatService.js';
 import sessionCache from '../services/sessionCache.js';
+import { sendBadRequest, sendForbidden, sendNotFound, sendServerError } from '../utils/responses.js';
+import { ERROR_MESSAGES } from '../config/constants.js';
 
 const router = express.Router();
-
-// Initialize Firestore with explicit projectId to use Application Default Credentials
-// This prevents it from trying to load GOOGLE_APPLICATION_CREDENTIALS file path
-const projectId = process.env.GOOGLE_CLOUD_PROJECT || 'helpful-beach-476908-p3';
-const firestore = new Firestore({ projectId });
 
 /**
  * POST /api/chat
@@ -21,7 +18,7 @@ router.post('/', async (req, res) => {
     let { message, sessionId, conversationHistory = [] } = req.body;
 
     if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
+      return sendBadRequest(res, 'Message is required');
     }
 
     let documents;
@@ -32,7 +29,7 @@ router.post('/', async (req, res) => {
       if (cachedSession) {
         // Security check: Ensure the session belongs to the authenticated user
         if (cachedSession.userId !== uid) {
-          return res.status(403).json({ error: 'Forbidden: You do not have access to this session.' });
+          return sendForbidden(res, ERROR_MESSAGES.SESSION_ACCESS_DENIED);
         }
         documents = cachedSession.documents;
         conversationHistory = cachedSession.conversationHistory;
@@ -71,11 +68,7 @@ router.post('/', async (req, res) => {
       sessionId: sessionId,
     });
   } catch (error) {
-    console.error('Error in chat:', error);
-    res.status(500).json({
-      error: 'Failed to process chat message',
-      message: error.message,
-    });
+    return sendServerError(res, error, ERROR_MESSAGES.CHAT_SEND_FAILED);
   }
 });
 
@@ -86,14 +79,14 @@ router.post('/', async (req, res) => {
 router.post('/end-session', (req, res) => {
   const { sessionId } = req.body;
   if (!sessionId) {
-    return res.status(400).json({ error: 'Session ID is required' });
+    return sendBadRequest(res, 'Session ID is required');
   }
 
   const deleted = sessionCache.delete(sessionId);
   if (deleted) {
-    res.status(200).json({ success: true, message: 'Session ended successfully.' });
+    return res.status(200).json({ success: true, message: 'Session ended successfully.' });
   } else {
-    res.status(404).json({ success: false, message: 'Session not found.' });
+    return sendNotFound(res, ERROR_MESSAGES.SESSION_NOT_FOUND);
   }
 });
 
